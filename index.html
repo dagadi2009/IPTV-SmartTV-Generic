@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniStream IPTV - TV & Mobile Sync (DASH / DRM)</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- QRCode.js for generating QR codes dynamically -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Shaka Player for DASH (.mpd) & ClearKey / Widevine DRM -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.compiled.js"></script>
+
+  <!-- HLS.js for fallback HLS (.m3u8) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.12/hls.min.js"></script>
+
+  <style>
+    /* Focus styles for TV D-Pad navigation */
+    .focusable:focus, .focusable.selected {
+      outline: 3px solid #3b82f6 !important;
+      outline-offset: 2px !important;
+      transform: scale(1.02);
+      transition: all 0.15s ease-in-out;
+    }
+
+    /* Scrollbar styling */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Custom Glassmorphism background */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="h-full font-sans antialiased selection:bg-blue-600 selection:text-white overflow-hidden bg-slate-950 text-slate-100">
+
+  <!-- APP SHELL -->
+  <div id="app" class="flex flex-col md:flex-row h-full w-full relative">
+
+    <!-- SIDEBAR / TV NAVIGATION -->
+    <aside id="sidebar" class="w-full md:w-64 bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col justify-between p-4 z-20 shrink-0">
+      <div>
+        <!-- Logo & Mode Badge -->
+        <div class="flex items-center justify-between px-2 py-3 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl text-white shadow-lg shadow-blue-600/30">
+              <i data-lucide="tv-2" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h1 class="font-bold text-base tracking-wide leading-none">OmniStream</h1>
+              <span id="device-mode-badge" class="text-[10px] bg-blue-500/20 text-blue-400 font-semibold px-2 py-0.5 rounded-full mt-1 inline-block">Modo TV</span>
+            </div>
+          </div>
+          <!-- Toggle TV / Mobile Layout manually -->
+          <button onclick="toggleDeviceMode()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition" title="Cambiar Vista TV/Móvil">
+            <i data-lucide="smartphone-nfc" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <nav class="space-y-1.5">
+          <button id="nav-channels" onclick="switchTab('channels')" class="focusable flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition bg-blue-600 text-white shadow-md shadow-blue-600/20">
+            <i data-lucide="list-video" class="w-5 h-5"></i>
+            <span>Canales</span>
+          </button>
+
+          <button id="nav-sync" onclick="switchTab('sync')" class="focusable flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition">
+            <i data-lucide="qr-code" class="w-5 h-5 text-amber-400"></i>
+            <span>Vincular / Cloud</span>
+          </button>
+
+          <button id="nav-add" onclick="switchTab('add')" class="focusable flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition">
+            <i data-lucide="folder-plus" class="w-5 h-5"></i>
+            <span>Cargar Lista / Archivo</span>
+          </button>
+
+          <button id="nav-direct" onclick="switchTab('direct')" class="focusable flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition">
+            <i data-lucide="play-circle" class="w-5 h-5"></i>
+            <span>Stream MPD / DRM</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Sync Status Card -->
+      <div class="mt-4 p-3.5 bg-slate-950/80 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-500">Estado Sync:</span>
+          <span id="sync-status-indicator" class="flex items-center gap-1.5 font-medium text-amber-400">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            Sin Vincular
+          </span>
+        </div>
+        <div class="flex justify-between border-t border-slate-800/60 pt-2">
+          <span class="text-slate-500">Canales:</span>
+          <span id="stat-channels-count" class="font-bold text-slate-200">0</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden relative">
+
+      <!-- TAB 1: CHANNELS LIST -->
+      <section id="tab-channels" class="flex-1 flex flex-col h-full overflow-hidden">
+        <!-- Top Toolbar -->
+        <header class="p-4 md:p-6 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 bg-slate-900/40 backdrop-blur shrink-0">
+          <div class="relative flex-1 min-w-[200px]">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input type="text" id="search-input" oninput="filterChannels()" placeholder="Buscar canal..." 
+                   class="focusable w-full bg-slate-900 border border-slate-700/60 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500">
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select id="category-select" onchange="filterChannels()" class="focusable bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
+              <option value="ALL">Todas las Categorías</option>
+            </select>
+          </div>
+        </header>
+
+        <!-- Channels Grid -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-6 no-scrollbar">
+          <div id="channels-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
+            <!-- Channel cards injected dynamically -->
+          </div>
+
+          <!-- Empty State -->
+          <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center py-16">
+            <div class="p-4 bg-slate-900 rounded-3xl text-slate-600 mb-4 border border-slate-800">
+              <i data-lucide="radio-receiver" class="w-12 h-12"></i>
+            </div>
+            <h3 class="text-base font-semibold text-slate-300">No hay canales cargados</h3>
+            <p class="text-xs text-slate-500 max-w-sm mt-1">Carga una lista M3U local/remota o vinclula la TV con tu móvil mediante QR.</p>
+            <div class="flex gap-3 mt-5">
+              <button onclick="switchTab('sync')" class="focusable px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs rounded-xl transition flex items-center gap-2 shadow-lg shadow-amber-500/20">
+                <i data-lucide="qr-code" class="w-4 h-4"></i> Vincular Móvil
+              </button>
+              <button onclick="switchTab('add')" class="focusable px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl transition">
+                Cargar Lista M3U
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: QR SYNC & CLOUD PAIRING -->
+      <section id="tab-sync" class="hidden flex-1 p-6 md:p-8 overflow-y-auto max-w-3xl mx-auto w-full">
+        <h2 class="text-xl md:text-2xl font-bold mb-1">Vincular Smart TV & Teléfono Móvil</h2>
+        <p class="text-slate-400 text-xs md:text-sm mb-6">Envía listas M3U o archivos locales desde tu móvil directamente a la pantalla del televisor sin teclear.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Room Setup Card -->
+          <div class="glass-panel p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 text-amber-400 font-semibold text-sm mb-3">
+                <i data-lucide="key-round" class="w-4 h-4"></i>
+                1. Código de Sala (Room ID)
+              </div>
+              <p class="text-xs text-slate-400 mb-4">Ingresa una palabra clave sencilla o utiliza la generada automáticamente para sincronizar tus dispositivos.</p>
+              
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[11px] font-medium text-slate-400 mb-1">ID de la Sala</label>
+                  <input type="text" id="room-id-input" placeholder="ej. mi-salon-123" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm font-mono text-amber-300 focus:outline-none focus:border-amber-500 uppercase">
+                </div>
+                <button onclick="applyRoomId()" class="focusable w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2">
+                  <i data-lucide="link" class="w-4 h-4"></i> Establecer / Conectar Sala
+                </button>
+              </div>
+            </div>
+
+            <div class="border-t border-slate-800/80 pt-4 text-xs text-slate-500 flex items-center gap-2">
+              <i data-lucide="cloud-check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+              <span>Servicio Sync activo mediante JSONBin Cloud API.</span>
+            </div>
+          </div>
+
+          <!-- QR Code Display Card -->
+          <div class="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center text-center">
+            <h3 class="text-sm font-semibold mb-1 text-slate-200">Escanea desde tu Móvil</h3>
+            <p class="text-xs text-slate-400 mb-4">Abre la cámara de tu teléfono para abrir el gestor de listas remoto.</p>
+            
+            <div id="qrcode-container" class="p-3 bg-white rounded-2xl shadow-xl mb-3 flex items-center justify-center">
+              <!-- QR Code Canvas injected here -->
+            </div>
+            
+            <span id="qr-room-label" class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20">
+              SALA: ---
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: ADD M3U (URL / LOCAL FILE FOR MOBILE & TV) -->
+      <section id="tab-add" class="hidden flex-1 p-6 md:p-8 overflow-y-auto max-w-3xl mx-auto w-full">
+        <h2 class="text-xl md:text-2xl font-bold mb-1">Cargar Lista IPTV</h2>
+        <p class="text-slate-400 text-xs md:text-sm mb-6">Soporta enlaces URL remotos o subida de archivos M3U/M3U8 guardados en la memoria de tu móvil.</p>
+
+        <div class="space-y-6">
+          
+          <!-- MOBILE FILE UPLOAD CARD -->
+          <div class="glass-panel p-6 rounded-2xl space-y-4 border-2 border-dashed border-slate-700/80 hover:border-blue-500/60 transition">
+            <div class="flex items-center gap-3">
+              <div class="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl">
+                <i data-lucide="file-up" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-sm text-slate-100">Subir Archivo Local (.m3u / .m3u8 / .txt)</h3>
+                <p class="text-xs text-slate-400">Selecciona un archivo guardado en el almacenamiento de tu smartphone o PC.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <input type="file" id="local-file-input" accept=".m3u,.m3u8,.txt" onchange="handleFileUpload(event)" class="hidden">
+              <label for="local-file-input" class="focusable cursor-pointer px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl transition flex items-center gap-2">
+                <i data-lucide="folder-open" class="w-4 h-4"></i> Seleccionar Archivo
+              </label>
+              <span id="file-name-label" class="text-xs text-slate-400 truncate max-w-xs">Ningún archivo seleccionado</span>
+            </div>
+          </div>
+
+          <!-- M3U URL CARD -->
+          <div class="glass-panel p-6 rounded-2xl space-y-4">
+            <h3 class="font-semibold text-sm flex items-center gap-2 text-slate-100">
+              <i data-lucide="globe" class="w-4 h-4 text-blue-400"></i>
+              Cargar desde URL Remota
+            </h3>
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Enlace M3U / M3U8</label>
+              <input type="url" id="m3u-url-input" placeholder="https://servidor.com/lista.m3u" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-blue-500">
+            </div>
+            <button onclick="loadM3uFromUrl()" class="focusable px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs rounded-xl transition flex items-center gap-2">
+              <i data-lucide="download-cloud" class="w-4 h-4"></i> Descargar y Procesar
+            </button>
+          </div>
+
+          <!-- DIRECT TEXT M3U CARD -->
+          <div class="glass-panel p-6 rounded-2xl space-y-4">
+            <h3 class="font-semibold text-sm flex items-center gap-2 text-slate-100">
+              <i data-lucide="file-text" class="w-4 h-4 text-indigo-400"></i>
+              Pegar Texto M3U Directamente
+            </h3>
+            <textarea id="m3u-text-input" rows="5" placeholder="#EXTM3U&#10;#EXTINF:-1 group-title=&quot;Deportes&quot;,Canal Ejemplo&#10;https://stream.mpd" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl p-3 text-[11px] font-mono text-slate-300 focus:outline-none focus:border-blue-500"></textarea>
+            
+            <div class="flex gap-3">
+              <button onclick="parseM3uTextAndSave()" class="focusable px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded-xl transition flex items-center gap-2">
+                <i data-lucide="play" class="w-4 h-4"></i> Procesar Texto Local
+              </button>
+              <button id="btn-push-to-tv" onclick="pushCurrentPlaylistToTv()" class="focusable px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg shadow-amber-500/20">
+                <i data-lucide="send" class="w-4 h-4"></i> 🚀 Enviar Lista a la TV
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 4: DIRECT MPD / CLEARKEY DRM STREAM PLAYBACK -->
+      <section id="tab-direct" class="hidden flex-1 p-6 md:p-8 overflow-y-auto max-w-3xl mx-auto w-full">
+        <h2 class="text-xl md:text-2xl font-bold mb-1">Stream Directo & DRM Config</h2>
+        <p class="text-slate-400 text-xs md:text-sm mb-6">Reproduce directamente un archivo `.mpd` (MPEG-DASH) o `.m3u8` especificando claves ClearKey DRM en hexadecimal.</p>
+
+        <form id="direct-stream-form" onsubmit="handleDirectPlay(event)" class="space-y-6">
+          <div class="glass-panel p-6 rounded-2xl space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">URL del Stream Manifest (.mpd / .m3u8)</label>
+              <input type="url" id="direct-url" required placeholder="https://servidor.com/live/manifest.mpd" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-400 mb-1.5">Nombre del Canal</label>
+              <input type="text" id="direct-name" placeholder="Canal MPD DRM" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-blue-500">
+            </div>
+          </div>
+
+          <!-- ClearKey Hex Config -->
+          <div class="glass-panel p-6 rounded-2xl space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="font-semibold text-sm flex items-center gap-2 text-amber-400">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                ClearKey DRM Configuration
+              </h3>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-mono">KID:KEY Format</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-400 mb-1">Key ID (KID)</label>
+                <input type="text" id="drm-kid" placeholder="e.g. 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-mono text-amber-300 focus:outline-none focus:border-amber-500">
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-400 mb-1">Key (Clave Hexadecimal)</label>
+                <input type="text" id="drm-key" placeholder="e.g. 9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c" class="focusable w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs font-mono text-amber-300 focus:outline-none focus:border-amber-500">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" class="focusable flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2">
+              <i data-lucide="play" class="w-4 h-4 fill-current"></i> Reproducir en esta pantalla
+            </button>
+            <button type="button" onclick="pushDirectStreamToTv()" class="focusable py-3 px-5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl transition flex items-center gap-2 shadow-lg shadow-amber-500/20">
+              <i data-lucide="tv" class="w-4 h-4"></i> Enviar a TV
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- FULLSCREEN SHAKA & HLS VIDEO PLAYER OVERLAY -->
+      <div id="player-overlay" class="fixed inset-0 bg-black z-50 hidden flex-col justify-between">
+        <div class="relative w-full h-full flex items-center justify-center bg-black">
+          <video id="video-player" class="w-full h-full object-contain" autoplay crossorigin="anonymous"></video>
+
+          <!-- Loading Spinner / Message -->
+          <div id="player-status" class="absolute flex flex-col items-center gap-3 bg-slate-900/90 backdrop-blur border border-slate-800 p-6 rounded-2xl hidden">
+            <div class="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <span id="player-status-text" class="text-xs font-medium text-slate-200">Cargando transmisión DASH...</span>
+          </div>
+
+          <!-- Controls Overlay -->
+          <div id="player-controls" class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-6 md:p-8 flex items-center justify-between transition-opacity duration-300 opacity-100">
+            <div class="flex items-center gap-3">
+              <div id="player-logo-container" class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden">
+                <i data-lucide="tv" class="w-5 h-5 text-slate-500"></i>
+              </div>
+              <div>
+                <h2 id="playing-title" class="text-base md:text-lg font-bold text-white drop-shadow">Canal IPTV</h2>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span id="playing-format" class="text-[10px] bg-blue-600/90 text-white font-bold px-2 py-0.5 rounded uppercase">DASH</span>
+                  <span id="playing-drm" class="text-[10px] bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded border border-amber-500/30 hidden">ClearKey DRM</span>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="closePlayer()" class="focusable p-3 bg-slate-800/80 hover:bg-slate-700 rounded-xl text-white backdrop-blur">
+              <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- APPLICATION JAVASCRIPT LOGIC -->
+  <script>
+    // JSONBin Master API Key provided
+    const JSONBIN_API_KEY = '$2a$10$ZfvNpCTuOn5bNnRjVgF4xuICX4cyi9fz1WKH0RA0aetqIA17NUBLS';
+    
+    // Application State
+    let channels = [];
+    let categories = new Set();
+    let currentRoomId = localStorage.getItem('omni_room_id') || '';
+    let jsonbinBinId = localStorage.getItem('omni_bin_id') || '';
+    let isTvMode = true;
+    let syncInterval = null;
+
+    // Video Players
+    let shakaPlayer = null;
+    let hlsPlayer = null;
+
+    // DOM Elements
+    const videoElement = document.getElementById('video-player');
+    const playerOverlay = document.getElementById('player-overlay');
+    const playerStatus = document.getElementById('player-status');
+    const playerStatusText = document.getElementById('player-status-text');
+
+    // Initialize App
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initShaka();
+      detectDeviceMode();
+      
+      // Auto reconnect room if present
+      if (currentRoomId) {
+        document.getElementById('room-id-input').value = currentRoomId;
+        applyRoomId(false);
+      } else {
+        // Generate random default room ID
+        const randomRoom = 'SALA-' + Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('room-id-input').value = randomRoom;
+        applyRoomId(false);
+      }
+
+      // Check URL parameters for mobile QR scan
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('room')) {
+        const roomFromUrl = urlParams.get('room');
+        document.getElementById('room-id-input').value = roomFromUrl;
+        applyRoomId(true);
+        switchTab('add');
+      }
+    });
+
+    // Detect if browser is running on Mobile or Smart TV
+    function detectDeviceMode() {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      
+      if (isMobile) {
+        isTvMode = false;
+        document.getElementById('device-mode-badge').innerText = 'Modo Móvil';
+        document.getElementById('device-mode-badge').className = 'text-[10px] bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded-full mt-1 inline-block';
+      }
+    }
+
+    function toggleDeviceMode() {
+      isTvMode = !isTvMode;
+      const badge = document.getElementById('device-mode-badge');
+      if (isTvMode) {
+        badge.innerText = 'Modo TV';
+        badge.className = 'text-[10px] bg-blue-500/20 text-blue-400 font-semibold px-2 py-0.5 rounded-full mt-1 inline-block';
+      } else {
+        badge.innerText = 'Modo Móvil';
+        badge.className = 'text-[10px] bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded-full mt-1 inline-block';
+      }
+    }
+
+    // Initialize Shaka Player
+    function initShaka() {
+      shaka.polyfill.installAll();
+      if (shaka.Player.isBrowserSupported()) {
+        shakaPlayer = new shaka.Player(videoElement);
+        shakaPlayer.addEventListener('error', (e) => showPlayerError('Error Shaka: ' + e.detail.code));
+      } else {
+        console.warn('Shaka Player no soportado de forma nativa.');
+      }
+    }
+
+    // Tab Navigation
+    function switchTab(tabId) {
+      ['channels', 'sync', 'add', 'direct'].forEach(id => {
+        const section = document.getElementById(`tab-${id}`);
+        const btn = document.getElementById(`nav-${id}`);
+        if (id === tabId) {
+          section.classList.remove('hidden');
+          btn.className = 'focusable flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition bg-blue-600 text-white shadow-md shadow-blue-600/20';
+        } else {
+          section.classList.add('hidden');
+          btn.className = 'focusable flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition';
+        }
+      });
+    }
+
+    // ClearKey & M3U / M3U8 / MPD Advanced Parser
+    function parseM3uContent(content) {
+      const lines = content.split(/\r?\n/);
+      const parsedChannels = [];
+      let currentChannel = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (line.startsWith('#EXTINF:')) {
+          currentChannel = { category: 'General', logo: '', name: 'Canal', url: '', type: 'HLS', kid: '', key: '' };
+
+          // Category
+          const groupMatch = line.match(/group-title="([^"]+)"/i);
+          if (groupMatch) currentChannel.category = groupMatch[1];
+
+          // Logo
+          const logoMatch = line.match(/tvg-logo="([^"]+)"/i);
+          if (logoMatch) currentChannel.logo = logoMatch[1];
+
+          // Embedded ClearKey DRM in EXTINF tags (e.g. clearkey="KID:KEY" or license-key="KID:KEY")
+          const drmMatch = line.match(/(?:clearkey|license-key)="([^"]+)"/i);
+          if (drmMatch) {
+            const parts = drmMatch[1].split(':');
+            if (parts.length === 2) {
+              currentChannel.kid = parts[0].trim();
+              currentChannel.key = parts[1].trim();
+            }
+          }
+
+          // Channel Name
+          const commaIdx = line.lastIndexOf(',');
+          if (commaIdx !== -1) currentChannel.name = line.substring(commaIdx + 1).trim();
+
+        } else if (line.startsWith('#EXTVLCOPT:clearkey=') || line.startsWith('#KEX:clearkey=')) {
+          // VLC ClearKey Option Format (#EXTVLCOPT:clearkey=KID:KEY)
+          const keysStr = line.split('=')[1];
+          if (keysStr && currentChannel) {
+            const parts = keysStr.split(':');
+            if (parts.length === 2) {
+              currentChannel.kid = parts[0].trim();
+              currentChannel.key = parts[1].trim();
+            }
+          }
+        } else if (line.startsWith('#EXT-X-KEY:METHOD=CLEARKEY')) {
+          // HLS / DASH ClearKey Format
+          const kidMatch = line.match(/KID=0x([0-9a-fA-F]+)/) || line.match(/KID=([0-9a-fA-F]+)/);
+          const keyMatch = line.match(/KEY=0x([0-9a-fA-F]+)/) || line.match(/KEY=([0-9a-fA-F]+)/);
+          if (kidMatch && keyMatch && currentChannel) {
+            currentChannel.kid = kidMatch[1];
+            currentChannel.key = keyMatch[1];
+          }
+        } else if (line && !line.startsWith('#')) {
+          if (currentChannel) {
+            currentChannel.url = line;
+            currentChannel.type = line.includes('.mpd') ? 'DASH' : 'HLS';
+            parsedChannels.push(currentChannel);
+            categories.add(currentChannel.category);
+            currentChannel = null;
+          } else {
+            // Standalone stream line without #EXTINF
+            const type = line.includes('.mpd') ? 'DASH' : 'HLS';
+            parsedChannels.push({ name: 'Stream ' + (parsedChannels.length + 1), url: line, type, category: 'General', logo: '', kid: '', key: '' });
+          }
+        }
+      }
+
+      channels = parsedChannels;
+      updateCategoriesDropdown();
+      renderChannels(channels);
+      document.getElementById('stat-channels-count').innerText = channels.length;
+      switchTab('channels');
+    }
+
+    // Local File Handling (Smartphone / PC)
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      document.getElementById('file-name-label').innerText = file.name;
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        const text = e.target.result;
+        document.getElementById('m3u-text-input').value = text;
+        parseM3uContent(text);
+      };
+
+      reader.readAsText(file);
+    }
+
+    // Fetch Remote M3U URL
+    async function loadM3uFromUrl() {
+      const url = document.getElementById('m3u-url-input').value.trim();
+      if (!url) return alert('Ingresa una URL válida.');
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('No se pudo descargar el archivo M3U');
+        const text = await res.text();
+        document.getElementById('m3u-text-input').value = text;
+        parseM3uContent(text);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function parseM3uTextAndSave() {
+      const text = document.getElementById('m3u-text-input').value;
+      if (!text) return alert('El área de texto está vacía.');
+      parseM3uContent(text);
+    }
+
+    // Render Channels Grid UI
+    function renderChannels(list) {
+      const grid = document.getElementById('channels-grid');
+      const emptyState = document.getElementById('empty-state');
+      grid.innerHTML = '';
+
+      if (list.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      list.forEach((ch) => {
+        const card = document.createElement('div');
+        card.className = 'focusable bg-slate-900/90 border border-slate-800 hover:border-blue-500/80 rounded-2xl p-3.5 flex flex-col justify-between cursor-pointer transition group shadow-lg hover:shadow-blue-500/10';
+        card.tabIndex = 0;
+        card.onclick = () => playStream(ch.url, ch.name, ch.type, ch.kid, ch.key, ch.logo);
+
+        const isDash = ch.type === 'DASH';
+        const badgeColor = isDash ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30';
+
+        card.innerHTML = `
+          <div class="flex justify-between items-center mb-2.5">
+            <span class="text-[9px] font-bold px-2 py-0.5 rounded border ${badgeColor}">${ch.type}</span>
+            ${ch.kid ? '<span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-mono">DRM</span>' : ''}
+          </div>
+
+          <div class="w-full h-14 mb-2.5 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-center overflow-hidden p-1">
+            ${ch.logo ? `<img src="${ch.logo}" class="w-full h-full object-contain" onerror="this.onerror=null; this.remove();">` : ''}
+            <i data-lucide="tv" class="w-6 h-6 text-slate-700"></i>
+          </div>
+
+          <h4 class="font-medium text-xs text-slate-200 group-hover:text-blue-400 line-clamp-2 leading-snug">${ch.name}</h4>
+        `;
+
+        grid.appendChild(card);
+      });
+      lucide.createIcons();
+    }
+
+    // Filter channels
+    function filterChannels() {
+      const query = document.getElementById('search-input').value.toLowerCase();
+      const cat = document.getElementById('category-select').value;
+
+      const filtered = channels.filter(ch => {
+        const matchesSearch = ch.name.toLowerCase().includes(query);
+        const matchesCat = (cat === 'ALL' || ch.category === cat);
+        return matchesSearch && matchesCat;
+      });
+
+      renderChannels(filtered);
+    }
+
+    function updateCategoriesDropdown() {
+      const select = document.getElementById('category-select');
+      select.innerHTML = '<option value="ALL">Todas las Categorías</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      });
+    }
+
+    // Direct stream handler
+    function handleDirectPlay(e) {
+      e.preventDefault();
+      const url = document.getElementById('direct-url').value.trim();
+      const name = document.getElementById('direct-name').value.trim() || 'Stream Directo';
+      const kid = document.getElementById('drm-kid').value.trim();
+      const key = document.getElementById('drm-key').value.trim();
+      const type = url.includes('.mpd') ? 'DASH' : 'HLS';
+
+      playStream(url, name, type, kid, key);
+    }
+
+    // Unified Shaka & HLS Player Execution
+    async function playStream(url, name, type, kid, key, logo = '') {
+      playerOverlay.classList.remove('hidden');
+      playerOverlay.classList.add('flex');
+      document.getElementById('playing-title').innerText = name;
+      document.getElementById('playing-format').innerText = type;
+
+      const drmBadge = document.getElementById('playing-drm');
+      if (kid && key) {
+        drmBadge.classList.remove('hidden');
+      } else {
+        drmBadge.classList.add('hidden');
+      }
+
+      showStatus('Iniciando stream ' + type + '...');
+
+      // Cleanup HLS instance
+      if (hlsPlayer) {
+        hlsPlayer.destroy();
+        hlsPlayer = null;
+      }
+
+      try {
+        if (type === 'DASH' || url.includes('.mpd')) {
+          await shakaPlayer.unload();
+
+          // ClearKey DRM configuration
+          if (kid && key) {
+            shakaPlayer.configure({
+              drm: {
+                clearKeys: {
+                  [kid]: key
+                }
+              }
+            });
+          } else {
+            shakaPlayer.configure({ drm: { clearKeys: {} } });
+          }
+
+          await shakaPlayer.load(url);
+          hideStatus();
+        } else {
+          // Native or Hls.js
+          if (Hls.isSupported()) {
+            hlsPlayer = new Hls();
+            hlsPlayer.loadSource(url);
+            hlsPlayer.attachMedia(videoElement);
+            hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+              videoElement.play();
+              hideStatus();
+            });
+            hlsPlayer.on(Hls.Events.ERROR, (e, data) => {
+              if (data.fatal) showPlayerError('Error HLS Fatal');
+            });
+          } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+            videoElement.src = url;
+            videoElement.play();
+            hideStatus();
+          }
+        }
+      } catch (err) {
+        showPlayerError('Error al reproducir: ' + err.message);
+      }
+    }
+
+    function showStatus(msg) {
+      playerStatusText.innerText = msg;
+      playerStatus.classList.remove('hidden');
+    }
+
+    function hideStatus() {
+      playerStatus.classList.add('hidden');
+    }
+
+    function showPlayerError(msg) {
+      playerStatusText.innerText = msg;
+      playerStatus.classList.remove('hidden');
+    }
+
+    function closePlayer() {
+      if (shakaPlayer) shakaPlayer.unload();
+      if (hlsPlayer) hlsPlayer.destroy();
+      videoElement.pause();
+      videoElement.removeAttribute('src');
+      playerOverlay.classList.add('hidden');
+      playerOverlay.classList.remove('flex');
+    }
+
+    // JSONBin Realtime Cloud Sync System
+    async function applyRoomId(forceSync = true) {
+      const roomVal = document.getElementById('room-id-input').value.trim().toUpperCase();
+      if (!roomVal) return;
+
+      currentRoomId = roomVal;
+      localStorage.setItem('omni_room_id', currentRoomId);
+      document.getElementById('qr-room-label').innerText = 'SALA: ' + currentRoomId;
+
+      // Update QR Code
+      const qrContainer = document.getElementById('qrcode-container');
+      qrContainer.innerHTML = '';
+      const targetUrl = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(currentRoomId)}`;
+      
+      new QRCode(qrContainer, {
+        text: targetUrl,
+        width: 140,
+        height: 140,
+        colorDark: "#020617",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      // Update Indicator Status
+      const indicator = document.getElementById('sync-status-indicator');
+      indicator.className = 'flex items-center gap-1.5 font-medium text-emerald-400';
+      indicator.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Conectado';
+
+      // Start Polling loop for Smart TV
+      if (syncInterval) clearInterval(syncInterval);
+      syncInterval = setInterval(pullCloudPlaylist, 4000);
+
+      if (forceSync) pullCloudPlaylist();
+    }
+
+    // Push Playlist from Mobile to Cloud TV
+    async function pushCurrentPlaylistToTv() {
+      if (!currentRoomId) return alert('Establece primero un ID de sala en la pestaña Vincular.');
+
+      const payload = {
+        roomId: currentRoomId,
+        updatedAt: Date.now(),
+        channels: channels,
+        m3uText: document.getElementById('m3u-text-input').value
+      };
+
+      try {
+        const res = await fetch('https://api.jsonbin.io/v3/b', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': JSONBIN_API_KEY,
+            'X-Bin-Name': 'OmniStream_' + currentRoomId,
+            'X-Bin-Private': 'false'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('Error al sincronizar con JSONBin');
+        const data = await res.json();
+        jsonbinBinId = data.metadata.id;
+        localStorage.setItem('omni_bin_id_' + currentRoomId, jsonbinBinId);
+
+        alert('🚀 ¡Lista enviada con éxito a la TV vinculada en la sala ' + currentRoomId + '!');
+      } catch (err) {
+        alert('Error al enviar a TV: ' + err.message);
+      }
+    }
+
+    // Push Single Direct Stream to TV
+    async function pushDirectStreamToTv() {
+      const url = document.getElementById('direct-url').value.trim();
+      const name = document.getElementById('direct-name').value.trim() || 'Stream Directo';
+      const kid = document.getElementById('drm-kid').value.trim();
+      const key = document.getElementById('drm-key').value.trim();
+      const type = url.includes('.mpd') ? 'DASH' : 'HLS';
+
+      if (!url) return alert('Ingresa una URL de transmisión.');
+
+      const singleChannel = [{ name, url, type, kid, key, category: 'Directo', logo: '' }];
+      channels = singleChannel;
+
+      await pushCurrentPlaylistToTv();
+    }
+
+    // Pull Cloud Data on Smart TV
+    async function pullCloudPlaylist() {
+      if (!currentRoomId) return;
+
+      const storedBinId = localStorage.getItem('omni_bin_id_' + currentRoomId);
+      if (!storedBinId) return;
+
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${storedBinId}/latest`, {
+          headers: { 'X-Master-Key': JSONBIN_API_KEY }
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+        const record = data.record;
+
+        if (record && record.roomId === currentRoomId && record.channels) {
+          // Check if new playlist received
+          const lastSyncTime = localStorage.getItem('omni_last_sync');
+          if (!lastSyncTime || parseInt(lastSyncTime) < record.updatedAt) {
+            channels = record.channels;
+            categories = new Set(channels.map(c => c.category));
+            updateCategoriesDropdown();
+            renderChannels(channels);
+            document.getElementById('stat-channels-count').innerText = channels.length;
+            localStorage.setItem('omni_last_sync', record.updatedAt.toString());
+          }
+        }
+      } catch (e) {
+        console.warn('Sync Polling Error:', e);
+      }
+    }
+
+    // Remote Control Back Key Support
+    document.addEventListener('keydown', (e) => {
+      if (playerOverlay.classList.contains('hidden')) return;
+      if (e.keyCode === 10009 || e.key === 'Escape' || e.key === 'Backspace') {
+        closePlayer();
+      }
+    });
+  </script>
+</body>
+</html>
