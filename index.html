@@ -1,0 +1,402 @@
+<!-- REV 1.0.6 - OMNISTREAM PLAYER SMART TV & MOBILE -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniStream Player - Smart TV & Mobile</title>
+
+    <!-- Shaka Player (Google - DASH / DRM Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <!-- HLS.js (HLS Backup Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.0/hls.min.js"></script>
+    <!-- QRCode Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #131b2e;
+            --bg-card: #1c2942;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-primary); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; }
+
+        header { background: var(--bg-secondary); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .logo-box { display: flex; align-items: center; gap: 12px; }
+        .logo-box svg { fill: var(--accent); width: 32px; height: 32px; }
+        .logo-title { font-size: 1.3rem; font-weight: 700; }
+        .logo-tag { font-size: 0.75rem; background: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; }
+
+        .btn { background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:hover, .btn:focus { background: var(--accent-hover); outline: 2px solid white; }
+        .btn-secondary { background: var(--bg-card); color: var(--text-main); }
+        .btn-secondary:hover { background: #263859; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #059669; }
+
+        main { display: grid; grid-template-columns: 1fr; gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; width: 100%; }
+        @media(min-width: 1024px) { main { grid-template-columns: 350px 1fr; } }
+
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        .card { background: var(--bg-secondary); border-radius: 12px; padding: 18px; border: 1px solid rgba(255,255,255,0.05); }
+        .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+
+        .player-container { background: black; border-radius: 12px; overflow: hidden; position: relative; width: 100%; aspect-ratio: 16/9; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .input-group label { font-size: 0.85rem; color: var(--text-sub); }
+        input, select { background: var(--bg-primary); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; }
+        input:focus, select:focus { outline: 1px solid var(--accent); }
+
+        .channel-list { display: flex; flex-direction: column; gap: 8px; max-height: 450px; overflow-y: auto; padding-right: 5px; }
+        .channel-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--bg-card); border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .channel-item:hover, .channel-item:focus { border-color: var(--accent); background: #233352; outline: none; }
+        .channel-item.active { border-color: var(--accent); background: var(--accent); }
+        .channel-item.active .ch-title { color: white; }
+        .ch-icon { width: 36px; height: 36px; border-radius: 6px; background: var(--bg-primary); object-fit: contain; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; }
+        .ch-info { flex: 1; overflow: hidden; }
+        .ch-title { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ch-group { font-size: 0.75rem; color: var(--text-sub); }
+
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: var(--bg-secondary); padding: 25px; border-radius: 12px; max-width: 450px; width: 90%; display: flex; flex-direction: column; gap: 15px; text-align: text-center; }
+        #qrcode { display: flex; justify-content: center; margin: 15px 0; background: white; padding: 15px; border-radius: 8px; }
+        .room-badge { font-size: 0.8rem; background: rgba(59, 130, 246, 0.2); color: var(--accent); padding: 4px 10px; border-radius: 12px; border: 1px solid var(--accent); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-box">
+            <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+            <div class="logo-title">OmniStream</div>
+            <span class="logo-tag">REV 1.0.6</span>
+        </div>
+        <div>
+            <button class="btn btn-secondary" id="btnSyncModal">📱 Vincular / Cloud</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="sidebar">
+            <div class="card">
+                <div class="card-title">
+                    <span>Cargar Lista / Archivo</span>
+                    <span id="roomTag" class="room-badge">Conectando...</span>
+                </div>
+                <div class="input-group">
+                    <label>Enlace M3U / M3U8 / MPD</label>
+                    <input type="text" id="m3uUrlInput" placeholder="https://..." />
+                </div>
+                <button class="btn" style="width: 100%;" id="btnLoadUrl">Cargar en Móvil</button>
+
+                <!-- BOTÓN ENVÍO GARANTIZADO -->
+                <button class="btn btn-success" style="width: 100%; margin-top: 10px;" id="btnSendToTv">🚀 Cargar Lista Directa en TV</button>
+
+                <div style="margin: 10px 0; text-align: center; color: var(--text-sub); font-size: 0.8rem;">O bien</div>
+                <input type="file" id="fileInput" accept=".m3u,.m3u8,.txt" style="display: none;" />
+                <button class="btn btn-secondary" style="width: 100%;" onclick="document.getElementById('fileInput').click()">📁 Subir archivo local .M3U</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Stream Manual MPD/DRM</div>
+                <div class="input-group">
+                    <label>URL manifiesto (.mpd)</label>
+                    <input type="text" id="manualMpdUrl" placeholder="https://domain.com/manifest.mpd" />
+                </div>
+                <div class="input-group">
+                    <label>ClearKey (KID:KEY)</label>
+                    <input type="text" id="manualClearkey" placeholder="123456...:abcdef..." />
+                </div>
+                <button class="btn btn-secondary" style="width: 100%;" id="btnPlayManual">▶ Reproducir MPD Directo</button>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="player-container">
+                <video id="videoPlayer" controls playsinline autoplay></video>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>Lista de Canales (<span id="chCount">0</span>)</span>
+                    <select id="groupFilter"><option value="">Todas las Categorías</option></select>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="searchBox" placeholder="🔍 Buscar canal..." />
+                </div>
+                <div class="channel-list" id="channelList"></div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="syncModal">
+        <div class="modal">
+            <div class="card-title">Sincronización Directa Móvil ➔ TV</div>
+            <p style="font-size: 0.85rem; color: var(--text-sub);">Escanea este QR con la cámara del móvil para vincular ambas pantallas al instante:</p>
+            <div id="qrcode"></div>
+            <div class="input-group">
+                <label>ID de Sala</label>
+                <input type="text" id="roomIdInput" style="text-align: center; font-weight: bold;" readonly />
+            </div>
+            <button class="btn" onclick="document.getElementById('syncModal').style.display='none'">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        let channels = [];
+        let rawM3uText = "";
+        let shakaPlayer = null;
+        let hlsPlayer = null;
+        let currentRoomId = 'SALA-' + Math.floor(10000 + Math.random() * 90000);
+        let broadcastChannel = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            shaka.polyfill.installAll();
+            if (shaka.Player.isBrowserSupported()) {
+                const video = document.getElementById('videoPlayer');
+                shakaPlayer = new shaka.Player(video);
+                shakaPlayer.configure({
+                    streaming: { rebufferingGoal: 2, bufferingGoal: 5, bufferBehind: 10, inaccuracyTolerance: 0.5 },
+                    manifest: { dash: { ignoreMinBufferTime: true } }
+                });
+            }
+
+            document.getElementById('btnLoadUrl').addEventListener('click', () => {
+                const url = document.getElementById('m3uUrlInput').value.trim();
+                if(url) loadM3UFromUrl(url);
+            });
+
+            document.getElementById('btnSendToTv').addEventListener('click', sendToTvCloud);
+
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        rawM3uText = evt.target.result;
+                        parseM3U(rawM3uText);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            document.getElementById('btnPlayManual').addEventListener('click', () => {
+                const url = document.getElementById('manualMpdUrl').value.trim();
+                const key = document.getElementById('manualClearkey').value.trim();
+                if(url) playStream(url, key);
+            });
+
+            document.getElementById('btnSyncModal').addEventListener('click', showSyncModal);
+            document.getElementById('searchBox').addEventListener('input', filterChannels);
+            document.getElementById('groupFilter').addEventListener('change', filterChannels);
+
+            initDirectChannel();
+            checkAutoLoadFromUrl();
+        });
+
+        function initDirectChannel() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('room')) {
+                currentRoomId = params.get('room');
+            } else if (localStorage.getItem('omni_room_v6')) {
+                currentRoomId = localStorage.getItem('omni_room_v6');
+            }
+            localStorage.setItem('omni_room_v6', currentRoomId);
+            document.getElementById('roomTag').innerText = currentRoomId;
+
+            // Escuchar por canal interno de la red
+            if ('BroadcastChannel' in window) {
+                broadcastChannel = new BroadcastChannel('omni_channel_' + currentRoomId);
+                broadcastChannel.onmessage = (event) => {
+                    document.getElementById('syncModal').style.display = 'none';
+                    if (event.data && event.data.url) loadM3UFromUrl(event.data.url, true);
+                    if (event.data && event.data.content) parseM3U(event.data.content, true);
+                };
+            }
+        }
+
+        function checkAutoLoadFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('m3u')) {
+                const url = decodeURIComponent(params.get('m3u'));
+                document.getElementById('m3uUrlInput').value = url;
+                loadM3UFromUrl(url, true);
+            }
+        }
+
+        async function loadM3UFromUrl(url, autoPlay = false) {
+            let fetchUrl = url;
+            if(url.includes('dropbox.com')) fetchUrl = url.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+
+            try {
+                const res = await fetch(fetchUrl);
+                rawM3uText = await res.text();
+                parseM3U(rawM3uText, autoPlay);
+            } catch(err) {
+                try {
+                    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(fetchUrl);
+                    const res = await fetch(proxyUrl);
+                    rawM3uText = await res.text();
+                    parseM3U(rawM3uText, autoPlay);
+                } catch(e) {
+                    alert('Error al obtener la lista. Verifica el enlace.');
+                }
+            }
+        }
+
+        function parseM3U(content, autoPlay = false) {
+            const lines = content.split('\n');
+            channels = [];
+            let current = {};
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    current = { name: line.split(',')[1] || 'Canal sin nombre', group: 'General', logo: '', key: null };
+                    const groupMatch = line.match(/group-title="([^"]+)"/);
+                    if(groupMatch) current.group = groupMatch[1];
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    if(logoMatch) current.logo = logoMatch[1];
+                } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_key=')) {
+                    current.key = line.split('=')[1].trim();
+                } else if (line && !line.startsWith('#')) {
+                    current.url = line;
+                    channels.push(current);
+                    current = {};
+                }
+            });
+
+            updateGroups();
+            renderChannels(channels);
+
+            if (autoPlay && channels.length > 0) {
+                playStream(channels[0].url, channels[0].key);
+            }
+        }
+
+        function renderChannels(list) {
+            const container = document.getElementById('channelList');
+            container.innerHTML = '';
+            document.getElementById('chCount').innerText = list.length;
+
+            list.forEach(ch => {
+                const item = document.createElement('div');
+                item.className = 'channel-item';
+                item.tabIndex = 0;
+                item.innerHTML = `
+                    <div class="ch-icon">${ch.logo ? `<img src="${ch.logo}" style="width:100%;height:100%;object-fit:contain;"/>` : '📺'}</div>
+                    <div class="ch-info">
+                        <div class="ch-title">${ch.name}</div>
+                        <div class="ch-group">${ch.group}</div>
+                    </div>
+                `;
+                item.addEventListener('click', () => playStream(ch.url, ch.key));
+                container.appendChild(item);
+            });
+        }
+
+        async function playStream(url, clearkey = null) {
+            const video = document.getElementById('videoPlayer');
+            if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+
+            if (url.includes('.mpd')) {
+                if (!shakaPlayer) return alert('DASH no es compatible.');
+                try {
+                    await shakaPlayer.unload();
+
+                    if (clearkey) {
+                        let keys = {};
+                        if(clearkey.includes(':')) {
+                            const [kid, key] = clearkey.split(':');
+                            keys[kid.toLowerCase()] = key.toLowerCase();
+                        }
+                        shakaPlayer.configure({ drm: { clearKeys: keys } });
+                    }
+
+                    await shakaPlayer.load(url);
+                    video.muted = false;
+                    const p = video.play();
+                    if (p) p.catch(() => { video.muted = true; video.play(); });
+                } catch(e) {
+                    alert('Error al reproducir Stream DRM/MPD.');
+                }
+            } else if (url.includes('.m3u8') && Hls.isSupported()) {
+                if (shakaPlayer) await shakaPlayer.unload();
+                hlsPlayer = new Hls();
+                hlsPlayer.loadSource(url);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            } else {
+                if (shakaPlayer) await shakaPlayer.unload();
+                video.src = url;
+                video.play();
+            }
+        }
+
+        function sendToTvCloud() {
+            const urlInput = document.getElementById('m3uUrlInput').value.trim();
+            if (!urlInput) return alert('Por favor, introduce la URL M3U en la casilla superior del móvil.');
+
+            // Generar enlace directo para la TV
+            const directTvUrl = window.location.href.split('?')[0] + '?room=' + currentRoomId + '&m3u=' + encodeURIComponent(urlInput);
+            
+            // Transmitir en local si estuvieran vinculados
+            if (broadcastChannel) {
+                broadcastChannel.postMessage({ url: urlInput });
+            }
+
+            // Actualizar el QR modal de la TV para permitir carga directa si fallase la red
+            document.getElementById('qrcode').innerHTML = '';
+            new QRCode(document.getElementById('qrcode'), {
+                text: directTvUrl,
+                width: 160, height: 160
+            });
+
+            alert('✅ Si la lista no carga sola en la TV, escanea nuevamente este QR actualizado en tu móvil y se cargará automáticamente al abrir la página.');
+        }
+
+        function updateGroups() {
+            const groups = [...new Set(channels.map(c => c.group))];
+            const select = document.getElementById('groupFilter');
+            select.innerHTML = '<option value="">Todas las Categorías</option>';
+            groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g; opt.innerText = g;
+                select.appendChild(opt);
+            });
+        }
+
+        function filterChannels() {
+            const query = document.getElementById('searchBox').value.toLowerCase();
+            const group = document.getElementById('groupFilter').value;
+            const filtered = channels.filter(c => 
+                (c.name.toLowerCase().includes(query)) &&
+                (!group || c.group === group)
+            );
+            renderChannels(filtered);
+        }
+
+        function showSyncModal() {
+            document.getElementById('syncModal').style.display = 'flex';
+            document.getElementById('roomIdInput').value = currentRoomId;
+            document.getElementById('qrcode').innerHTML = '';
+            
+            const syncUrl = window.location.href.split('?')[0] + '?room=' + currentRoomId;
+            new QRCode(document.getElementById('qrcode'), {
+                text: syncUrl,
+                width: 160, height: 160
+            });
+        }
+    </script>
+</body>
+</html>
