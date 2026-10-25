@@ -1,42 +1,630 @@
+<!-- REV 1.1.2 - OMNISTREAM PLAYER SMART TV & MOBILE -->
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OmniStream Player 1.2.7</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.0/hls.min.js"></script>
-<style>
-:root{--bg:#080b11;--panel:#0f172a;--card:#1e293b;--accent:#3b82f6;--text:#f8fafc;--muted:#94a3b8;--ok:#10b981;--bad:#ef4444}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}button,input,select{font:inherit}button{cursor:pointer}button:focus,input:focus,select:focus,[tabindex]:focus{outline:3px solid white;box-shadow:0 0 16px var(--accent)}.btn{background:var(--accent);color:white;border:0;border-radius:8px;padding:11px 15px;font-weight:bold}.secondary{background:var(--card)}.success{background:var(--ok)}.danger{background:var(--bad)}.small{padding:6px 9px}header{background:var(--panel);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.brand{font-weight:bold;font-size:22px}.brand small{font-size:11px;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap}main{max-width:1650px;margin:auto;padding:18px;display:grid;grid-template-columns:350px minmax(0,1fr);gap:18px}.sidebar,.content{display:flex;flex-direction:column;gap:15px}.card{background:var(--panel);border-radius:12px;padding:17px;border:1px solid #273244}h3{margin:0 0 13px;font-size:17px}.field{display:flex;flex-direction:column;gap:7px;margin:10px 0}.field label{color:var(--muted);font-size:13px}input,select{width:100%;padding:12px;background:var(--bg);color:white;border:1px solid #465269;border-radius:7px;min-width:0}.full{width:100%;margin-top:8px}.saved{max-height:210px;overflow:auto}.saved-row{display:flex;gap:8px;align-items:center;background:var(--card);margin:7px 0;padding:7px;border-radius:8px}.saved-row button:first-child{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.player{background:black;position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden}video{width:100%;height:100%;object-fit:contain}.ratio{position:absolute;top:10px;right:10px;z-index:2}.epg{background:var(--panel);border-radius:10px;padding:14px}.muted{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;max-height:550px;overflow:auto}.channel{display:flex;align-items:center;gap:9px;background:var(--card);padding:10px;border:2px solid transparent;border-radius:9px;cursor:pointer;min-width:0}.channel.active{border-color:var(--ok)}.channel:focus{border-color:var(--accent)}.logo{width:46px;height:46px;object-fit:contain;background:#080b11;border-radius:6px;flex-shrink:0}.chtext{flex:1;min-width:0;overflow:hidden}.chname{font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fav{background:transparent;color:#f59e0b;border:0;font-size:24px;padding:5px}.filters{display:flex;gap:10px;flex-wrap:wrap}.filters>*{flex:1;min-width:140px}.overlay{position:fixed;inset:0;background:rgba(8,11,17,.98);z-index:30;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}.dialog{width:100%;max-width:430px;background:var(--panel);border:1px solid #354158;border-radius:14px;padding:24px;text-align:center}.dialog h2{color:var(--accent)}.hidden{display:none!important}.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.numpad button{padding:16px;font-size:23px}.pin-dots{letter-spacing:7px;font-size:28px;min-height:45px}.error{color:#ff8585;min-height:22px}.status{color:var(--muted);font-size:13px;min-height:18px}.modal{background:rgba(0,0,0,.92);z-index:40}.modal img{max-width:220px;width:100%;background:white;padding:8px}.urltext{overflow-wrap:anywhere;font-size:13px;color:#83e2ad;margin:10px 0}#epgCurrent{font-size:17px;font-weight:bold;margin:8px 0}@media(max-width:850px){main{grid-template-columns:1fr}header{padding:12px}.grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}}@media(max-width:500px){.grid{grid-template-columns:1fr}.dialog{padding:15px}}
-</style></head><body>
-<div id="adminScreen" class="overlay"><div class="dialog"><h2>🔐 OmniStream</h2><p>Introduce la contraseña de acceso.</p><div class="field"><input id="webPasswordInput" type="password" placeholder="Contraseña" autocomplete="off" autocapitalize="off" spellcheck="false"></div><button id="btnValidateWebPass" class="btn success full">Entrar al reproductor</button><p id="authError" class="error"></p><button id="btnResetAuth" class="btn secondary small">Restablecer acceso guardado</button></div></div>
-<div id="lockScreen" class="overlay hidden"><div class="dialog"><h2>🔒 PIN de la TV</h2><p>Introduce tu PIN local y pulsa OK.</p><div id="pinDisplay" class="pin-dots">—</div><div class="numpad" id="numpad"><button class="btn secondary" data-digit="1">1</button><button class="btn secondary" data-digit="2">2</button><button class="btn secondary" data-digit="3">3</button><button class="btn secondary" data-digit="4">4</button><button class="btn secondary" data-digit="5">5</button><button class="btn secondary" data-digit="6">6</button><button class="btn secondary" data-digit="7">7</button><button class="btn secondary" data-digit="8">8</button><button class="btn secondary" data-digit="9">9</button><button id="btnPinClear" class="btn danger">C</button><button class="btn secondary" data-digit="0">0</button><button id="btnPinSubmit" class="btn success">OK</button></div><p id="pinError" class="error"></p></div></div>
-<header><div class="brand">📺 OmniStream <small>REV 1.2.7</small></div><div class="actions"><button id="btnLockApp" class="btn secondary">🔒 Bloquear TV</button><button id="btnSyncModal" class="btn secondary">📱 Exportar listas</button></div></header>
-<main id="mainContent"><aside class="sidebar"><section class="card"><h3>Mis listas guardadas</h3><div class="field"><label for="playlistSelect">Seleccionar lista</label><select id="playlistSelect"><option value="">-- Seleccionar --</option></select></div><div id="playlistsContainer" class="saved"></div></section><section class="card"><h3>Añadir nueva lista</h3><div class="field"><label for="listNameInput">Nombre</label><input id="listNameInput" placeholder="Deportes / Películas"></div><div class="field"><label for="m3uUrlInput">URL M3U, M3U8 o MPD</label><input id="m3uUrlInput" placeholder="https://..."></div><button id="btnAddList" class="btn success full">💾 Guardar y cargar</button><button id="btnGenerateQr" class="btn secondary full">📲 Exportar a TV</button><p id="loadStatus" class="status"></p></section><section class="card"><h3>Seguridad local</h3><button id="btnChangePin" class="btn secondary full">🔑 Cambiar PIN</button></section></aside><div class="content"><div class="player"><button id="btnToggleRatio" class="btn secondary small ratio">Aspecto: normal</button><video id="videoPlayer" controls playsinline></video></div><div class="epg"><div class="muted">🔴 EN DIRECTO <span id="epgTime" style="float:right">--:--</span></div><div id="epgCurrent">Selecciona un canal</div><div id="epgNext" class="muted">Programación no disponible</div></div><section class="card"><h3>Guía de canales (<span id="chCount">0</span>)</h3><div class="filters"><input id="searchBox" placeholder="🔎 Buscar canal"><select id="groupFilter"><option value="">Todas las categorías</option></select></div><div id="channelList" class="grid" style="margin-top:13px"></div></section></div></main>
-<div id="syncModal" class="overlay modal hidden"><div class="dialog"><h2>📱 Exportar listas</h2><p>Abre este enlace en la TV o escanea el código QR.</p><div id="shortLinkDisplay" class="urltext"></div><img id="qrImg" alt="Código QR"><button id="btnCopyLink" class="btn success full">Copiar enlace</button><button id="btnCloseModal" class="btn secondary full">Cerrar</button><p class="muted">El enlace contiene las URL de tus listas. No lo compartas públicamente.</p></div></div>
-<script>
-(function(){'use strict';
-// SHA-256 verificados: contraseña 2026webm3u y PIN 123456.
-var WEB_HASH='8fe3cc7a3bb90a65a17bbed18e0a5af3338d41a6914c902512aabed06a6b7dec';
-var PIN_HASH='8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92';
-var channels=[],playlists=readJSON('omni_playlists',[]),favorites=readJSON('omni_favorites',[]),hidden=readJSON('omni_hidden',[]),savedPin=storeGet('omni_pin_hash')||PIN_HASH,enteredPin='',shakaPlayer=null,hlsPlayer=null,activeChannel=null,shortUrl='',ratio=0,initialized=false,importDone=false;
-function el(id){return document.getElementById(id)}function show(id,on){el(id).className=el(id).className.replace(/\s*hidden/g,'')+(on?'':' hidden')}
-function storeGet(k){try{return localStorage.getItem(k)}catch(e){return null}}function storeSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}function storeDel(k){try{localStorage.removeItem(k)}catch(e){}}function readJSON(k,fallback){try{var v=JSON.parse(storeGet(k)||'null');return Array.isArray(v)?v:fallback}catch(e){return fallback}}
-// SHA-256 síncrono sin dependencias, compatible con motores JS antiguos.
-function sha256(ascii){function rr(v,n){return(v>>>n)|(v<<(32-n))}var max=4294967296,words=[],hash=[],k=[],prime=2;while(k.length<64){var primeFlag=true;for(var d=2;d*d<=prime;d++)if(prime%d===0){primeFlag=false;break}if(primeFlag){if(hash.length<8)hash.push((Math.pow(prime,.5)%1*max)|0);k.push((Math.pow(prime,1/3)%1*max)|0)}prime++}var bytes=[];for(var i=0;i<ascii.length;i++){var code=ascii.charCodeAt(i);if(code<128)bytes.push(code);else if(code<2048){bytes.push(192|(code>>6),128|(code&63))}else if(code>=55296&&code<=56319&&i+1<ascii.length){var low=ascii.charCodeAt(++i),cp=65536+((code-55296)<<10)+(low-56320);bytes.push(240|(cp>>18),128|((cp>>12)&63),128|((cp>>6)&63),128|(cp&63))}else bytes.push(224|(code>>12),128|((code>>6)&63),128|(code&63))}var len=bytes.length;bytes.push(128);while(bytes.length%64!==56)bytes.push(0);var hi=Math.floor(len*8/max),lo=(len*8)>>>0;for(i=3;i>=0;i--)bytes.push((hi>>>(i*8))&255);for(i=3;i>=0;i--)bytes.push((lo>>>(i*8))&255);for(var offset=0;offset<bytes.length;offset+=64){words=[];for(i=0;i<16;i++){var ix=offset+i*4;words[i]=((bytes[ix]<<24)|(bytes[ix+1]<<16)|(bytes[ix+2]<<8)|bytes[ix+3])|0}for(i=16;i<64;i++){var a=words[i-15],b=words[i-2];words[i]=(words[i-16]+(rr(a,7)^rr(a,18)^(a>>>3))+words[i-7]+(rr(b,17)^rr(b,19)^(b>>>10)))|0}var h=hash.slice();for(i=0;i<64;i++){var s1=rr(h[4],6)^rr(h[4],11)^rr(h[4],25),ch=(h[4]&h[5])^(~h[4]&h[6]),t1=(h[7]+s1+ch+k[i]+words[i])|0,s0=rr(h[0],2)^rr(h[0],13)^rr(h[0],22),maj=(h[0]&h[1])^(h[0]&h[2])^(h[1]&h[2]),t2=(s0+maj)|0;h=[(t1+t2)|0,h[0],h[1],h[2],(h[3]+t1)|0,h[4],h[5],h[6]]}for(i=0;i<8;i++)hash[i]=(hash[i]+h[i])|0}var out='';for(i=0;i<8;i++)for(var j=3;j>=0;j--)out+=('0'+((hash[i]>>>(j*8))&255).toString(16)).slice(-2);return out}
-function normalizedHash(s){return sha256(String(s).trim().toLowerCase())}
-function init(){if(initialized)return;initialized=true;el('btnValidateWebPass').onclick=validateWebPassword;el('webPasswordInput').onkeydown=function(e){if((e.key||e.keyCode)==='Enter'||e.keyCode===13)validateWebPassword()};el('btnResetAuth').onclick=function(){storeDel('omni_web_auth');el('authError').textContent='Acceso restablecido. Introduce la contraseña.'};var buttons=el('numpad').querySelectorAll('[data-digit]');for(var i=0;i<buttons.length;i++)buttons[i].onclick=function(){pressPin(this.getAttribute('data-digit'))};el('btnPinClear').onclick=clearPin;el('btnPinSubmit').onclick=submitPin;el('btnLockApp').onclick=lockApp;el('btnChangePin').onclick=changePin;el('btnAddList').onclick=saveAndLoadPlaylist;el('btnToggleRatio').onclick=toggleRatio;el('playlistSelect').onchange=function(){if(this.value)loadList(this.value,true)};el('btnGenerateQr').onclick=generateTvLink;el('btnSyncModal').onclick=generateTvLink;el('btnCopyLink').onclick=copyLink;el('btnCloseModal').onclick=function(){show('syncModal',false)};el('searchBox').oninput=filterChannels;el('groupFilter').onchange=filterChannels;document.addEventListener('keydown',keyHandler);try{if(window.shaka){shaka.polyfill.installAll();if(shaka.Player.isBrowserSupported()){shakaPlayer=new shaka.Player(el('videoPlayer'));shakaPlayer.configure({streaming:{rebufferingGoal:2,bufferingGoal:10,bufferBehind:20}})}}}catch(e){console.log('Shaka no disponible',e)}updateClock();setInterval(updateClock,15000);renderPlaylists();if(storeGet('omni_web_auth')===WEB_HASH)openPin();else show('adminScreen',true)}
-function validateWebPassword(){var pass=el('webPasswordInput').value;if(!pass){el('authError').textContent='Introduce una contraseña.';return}if(normalizedHash(pass)===WEB_HASH){storeSet('omni_web_auth',WEB_HASH);el('webPasswordInput').value='';el('authError').textContent='';openPin()}else{el('authError').textContent='Contraseña incorrecta.';el('webPasswordInput').value=''}}
-function openPin(){show('adminScreen',false);clearPin();show('lockScreen',true);try{el('btnPinSubmit').focus()}catch(e){}}
-function pressPin(n){if(enteredPin.length<12)enteredPin+=n;el('pinDisplay').textContent=enteredPin?new Array(enteredPin.length+1).join('•'):'—'}function clearPin(){enteredPin='';el('pinDisplay').textContent='—';el('pinError').textContent=''}function submitPin(){if(normalizedHash(enteredPin)===savedPin){show('lockScreen',false);clearPin();if(!importDone){importDone=true;checkAutoLoad()}}else{el('pinError').textContent='PIN incorrecto';enteredPin='';el('pinDisplay').textContent='—'}}function lockApp(){try{el('videoPlayer').pause()}catch(e){}openPin()}function changePin(){var p=prompt('Nuevo PIN numérico (mínimo 4 dígitos):');if(p===null)return;if(!/^\d{4,12}$/.test(p)){alert('El PIN debe contener entre 4 y 12 números.');return}savedPin=normalizedHash(p);storeSet('omni_pin_hash',savedPin);alert('PIN actualizado.')}
-function keyHandler(e){var code=e.keyCode,key=e.key||'';if(!el('lockScreen').classList.contains('hidden')){if((code>=48&&code<=57)||(code>=96&&code<=105)){pressPin(String(code>=96?code-96:code-48));e.preventDefault()}else if(code===13||code===10009){if(code===13)submitPin();e.preventDefault()}else if(code===8||code===46){clearPin();e.preventDefault()}return}if(!el('adminScreen').classList.contains('hidden'))return;var active=document.activeElement,tag=active&&active.tagName;if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;if(code>=37&&code<=40){var focusable=Array.prototype.slice.call(document.querySelectorAll('button,select,input,[tabindex="0"]')).filter(function(x){return x.offsetWidth>0&&x.offsetHeight>0});var ix=focusable.indexOf(active);if(ix<0)ix=0;var next=ix+((code===37||code===38)?-1:1);focusable[(next+focusable.length)%focusable.length].focus();e.preventDefault()}}
-function renderPlaylists(){var select=el('playlistSelect'),container=el('playlistsContainer');select.innerHTML='';var blank=document.createElement('option');blank.value='';blank.textContent='-- Seleccionar lista --';select.appendChild(blank);container.innerHTML='';playlists.forEach(function(p,index){var o=document.createElement('option');o.value=p.url;o.textContent=p.name;select.appendChild(o);var row=document.createElement('div');row.className='saved-row';var b=document.createElement('button');b.className='btn secondary small';b.textContent='📺 '+p.name;b.onclick=function(){select.value=p.url;loadList(p.url,true)};var del=document.createElement('button');del.className='btn danger small';del.textContent='🗑';del.onclick=function(){if(confirm('¿Eliminar lista '+p.name+'?')){playlists.splice(index,1);storeSet('omni_playlists',JSON.stringify(playlists));renderPlaylists()}};row.appendChild(b);row.appendChild(del);container.appendChild(row)})}
-function saveAndLoadPlaylist(){var url=el('m3uUrlInput').value.trim(),name=el('listNameInput').value.trim()||'Lista '+(playlists.length+1);if(!/^https?:\/\//i.test(url)){alert('Introduce una URL http o https válida.');return}var found=false;playlists.forEach(function(p){if(p.url===url){p.name=name;found=true}});if(!found)playlists.push({name:name,url:url});storeSet('omni_playlists',JSON.stringify(playlists));renderPlaylists();el('playlistSelect').value=url;el('listNameInput').value='';loadList(url,true)}
-function checkAutoLoad(){var query=location.search||'',data=param(query,'data'),list=param(query,'list');if(data){try{var imported=JSON.parse(decodeBase64(data));if(Array.isArray(imported)){imported.forEach(function(p){if(p&&typeof p.url==='string'&&/^https?:\/\//i.test(p.url)&&!playlists.some(function(x){return x.url===p.url}))playlists.push({name:String(p.name||'Lista importada'),url:p.url})});storeSet('omni_playlists',JSON.stringify(playlists));renderPlaylists()}}catch(e){setStatus('No se pudieron importar las listas del enlace.')}}if(list){el('m3uUrlInput').value=list;loadList(list,true)}else if(playlists.length){el('playlistSelect').value=playlists[0].url;loadList(playlists[0].url,false)}}function param(q,k){var m=new RegExp('[?&]'+k+'=([^&]*)').exec(q);if(!m)return null;try{return decodeURIComponent(m[1].replace(/\+/g,'%20'))}catch(e){return null}}
-function setStatus(s){el('loadStatus').textContent=s}function getText(url,done,fail){var xhr=new XMLHttpRequest();xhr.open('GET',url,true);xhr.timeout=25000;xhr.onreadystatechange=function(){if(xhr.readyState===4){if((xhr.status>=200&&xhr.status<300)||(xhr.status===0&&xhr.responseText)){done(xhr.responseText)}else fail(new Error('HTTP '+xhr.status))}};xhr.onerror=function(){fail(new Error('Error de red/CORS'))};xhr.ontimeout=function(){fail(new Error('Tiempo de espera agotado'))};try{xhr.send()}catch(e){fail(e)}}
-function loadList(url,autoplay){setStatus('Cargando lista...');var actual=url;if(/dropbox\.com/i.test(url))actual=url.replace('www.dropbox.com','dl.dropboxusercontent.com').replace('dl=0','dl=1');if(/\.m3u8?(?:[?#]|$)/i.test(actual)===false&&/\.mpd(?:[?#]|$)/i.test(actual)){parseM3U('#EXTM3U\n#EXTINF:-1,Emisión directa\n'+actual,autoplay);return}if(/\.m3u8(?:[?#]|$)/i.test(actual)){parseM3U('#EXTM3U\n#EXTINF:-1,Emisión HLS\n'+actual,autoplay);return}getText(actual,function(t){if(/^\s*#EXTM3U/i.test(t)||/#EXTINF:/i.test(t)){parseM3U(t,autoplay)}else setStatus('La URL no devuelve una lista M3U válida.')},function(e){setStatus('No se pudo descargar la lista: '+e.message+'. Comprueba URL, HTTPS y CORS. No se utiliza un proxy público por privacidad.')})}
-function attr(s,name){var r=new RegExp('(?:^|\\s)'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'="([^"]*)"','i').exec(s);return r?r[1]:''}function parseM3U(text,autoplay){channels=[];var lines=text.replace(/\r/g,'').split('\n'),pending=null,idx=0;for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(line.indexOf('#EXTINF:')===0){var comma=line.indexOf(',');pending={name:comma>=0?line.substring(comma+1).trim():'Canal sin nombre',group:attr(line,'group-title')||'General',logo:attr(line,'tvg-logo'),key:null,epgNow:attr(line,'tvg-now')||'Programación no disponible',epgNext:'Programación no disponible'}}else if(pending&&line.indexOf('#KODIPROP:inputstream.adaptive.license_key=')===0){pending.key=line.substring(line.indexOf('=')+1).trim()}else if(pending&&line.indexOf('#EXTVLCOPT:')===0){}else if(line&&line.charAt(0)!=='#'){if(!pending)pending={name:'Canal '+(idx+1),group:'General',logo:'',key:null,epgNow:'Programación no disponible',epgNext:'Programación no disponible'};pending.url=line;pending.id=++idx;if(hidden.indexOf(pending.name)<0)channels.push(pending);pending=null}}updateGroups();filterChannels();setStatus(channels.length+' canales cargados.');if(autoplay&&channels.length)playStream(channels[0])}
-function updateGroups(){var select=el('groupFilter');select.innerHTML='';[['','Todas las categorías'],['__fav__','⭐ Favoritos']].forEach(function(p){var o=document.createElement('option');o.value=p[0];o.textContent=p[1];select.appendChild(o)});var seen={};channels.forEach(function(c){if(!seen[c.group]){seen[c.group]=true;var o=document.createElement('option');o.value=c.group;o.textContent=c.group;select.appendChild(o)}})}function filterChannels(){var query=el('searchBox').value.toLowerCase(),group=el('groupFilter').value;renderChannels(channels.filter(function(c){return(c.name.toLowerCase().indexOf(query)>=0||String(c.id)===query)&&(!group||(group==='__fav__'?favorites.indexOf(c.name)>=0:c.group===group))}))}
-function renderChannels(list){var container=el('channelList');container.innerHTML='';el('chCount').textContent=list.length;list.forEach(function(c){var item=document.createElement('div');item.className='channel'+(activeChannel&&activeChannel.url===c.url?' active':'');item.tabIndex=0;var logo=document.createElement('img');logo.className='logo';logo.alt='📺';if(c.logo&&/^https?:\/\//i.test(c.logo))logo.src=c.logo;else logo.style.display='none';logo.onerror=function(){this.style.display='none'};var details=document.createElement('div');details.className='chtext';var name=document.createElement('div');name.className='chname';name.textContent=c.id+'. '+c.name;var info=document.createElement('div');info.className='muted';info.textContent=c.epgNow;details.appendChild(name);details.appendChild(info);var fav=document.createElement('button');fav.className='fav';fav.textContent=favorites.indexOf(c.name)>=0?'★':'☆';fav.title='Favorito';fav.onclick=function(e){e.stopPropagation();toggleFavorite(c.name)};var del=document.createElement('button');del.className='btn danger small';del.textContent='🗑';del.onclick=function(e){e.stopPropagation();hideChannel(c.name)};item.appendChild(logo);item.appendChild(details);item.appendChild(fav);item.appendChild(del);item.onclick=function(){playStream(c);filterChannels()};item.onkeydown=function(e){if(e.keyCode===13){e.preventDefault();item.click()}};container.appendChild(item)})}function toggleFavorite(name){var i=favorites.indexOf(name);if(i>=0)favorites.splice(i,1);else favorites.push(name);storeSet('omni_favorites',JSON.stringify(favorites));filterChannels()}function hideChannel(name){if(confirm('¿Ocultar '+name+'?')){if(hidden.indexOf(name)<0)hidden.push(name);storeSet('omni_hidden',JSON.stringify(hidden));channels=channels.filter(function(c){return c.name!==name});filterChannels()}}
-function unloadShaka(){if(shakaPlayer){return shakaPlayer.unload().catch(function(){})}return Promise.resolve()}function clearPlayback(){if(hlsPlayer){try{hlsPlayer.destroy()}catch(e){}hlsPlayer=null}try{el('videoPlayer').pause();el('videoPlayer').removeAttribute('src');el('videoPlayer').load()}catch(e){}}
-function startVideo(){var v=el('videoPlayer');var p;try{p=v.play();if(p&&p.catch)p.catch(function(){setStatus('Pulsa Play en el reproductor si la TV bloquea el inicio automático.')})}catch(e){setStatus('Pulsa Play para comenzar.')}}function playStream(c){activeChannel=c;el('epgCurrent').textContent=c.id+'. '+c.name+' — '+c.epgNow;el('epgNext').textContent='A continuación: '+c.epgNext;setStatus('Abriendo '+c.name+'...');var url=c.url,mpd=/\.mpd(?:[?#]|$)/i.test(url),hls=/\.m3u8(?:[?#]|$)/i.test(url);if(hlsPlayer){hlsPlayer.destroy();hlsPlayer=null}if(mpd){if(!shakaPlayer){setStatus('DASH no disponible en este navegador.');return}unloadShaka().then(function(){clearPlayback();var keys={};if(c.key&&/^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}$/.test(c.key)){var pair=c.key.split(':');keys[pair[0].toLowerCase()]=pair[1].toLowerCase()}shakaPlayer.configure({drm:{clearKeys:keys}});return shakaPlayer.load(url)}).then(function(){setStatus('Reproduciendo '+c.name);startVideo()}).catch(function(e){setStatus('Error DASH/DRM: '+(e.code||e.message||e))});return}unloadShaka().then(function(){clearPlayback();var v=el('videoPlayer');if(hls){if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=url;v.onloadedmetadata=startVideo;setStatus('HLS nativo')}else if(window.Hls&&Hls.isSupported()){hlsPlayer=new Hls();hlsPlayer.loadSource(url);hlsPlayer.attachMedia(v);hlsPlayer.on(Hls.Events.MANIFEST_PARSED,function(){startVideo();setStatus('Reproduciendo '+c.name)});hlsPlayer.on(Hls.Events.ERROR,function(ev,data){if(data.fatal)setStatus('Error HLS: '+data.details)})}else setStatus('HLS no compatible con este navegador.')}else{v.src=url;startVideo();setStatus('Abriendo vídeo directo')}}).catch(function(e){setStatus('Error al iniciar: '+e.message)})}
-function toggleRatio(){ratio=(ratio+1)%3;el('videoPlayer').style.objectFit=['contain','cover','fill'][ratio];el('btnToggleRatio').textContent=['Aspecto: normal','Aspecto: zoom','Aspecto: estirar'][ratio]}function updateClock(){var d=new Date();el('epgTime').textContent=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
-function encodeBase64(s){return btoa(unescape(encodeURIComponent(s)))}function decodeBase64(s){return decodeURIComponent(escape(atob(s)))}function generateTvLink(){var list=playlists.slice();if(!list.length){var u=el('m3uUrlInput').value.trim();if(!/^https?:\/\//i.test(u)){alert('Primero guarda o introduce una URL válida.');return}list.push({name:'Lista principal',url:u})}if(location.protocol==='file:'){alert('Para exportar a otra TV, publica este HTML en un servidor HTTPS. Un archivo local no tiene una dirección accesible desde otros dispositivos.');return}shortUrl=location.origin+location.pathname+'?data='+encodeURIComponent(encodeBase64(JSON.stringify(list)));el('shortLinkDisplay').textContent=shortUrl;el('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='+encodeURIComponent(shortUrl);show('syncModal',true);var xhr=new XMLHttpRequest();xhr.open('GET','https://is.gd/create.php?format=json&url='+encodeURIComponent(shortUrl),true);xhr.timeout=7000;xhr.onreadystatechange=function(){if(xhr.readyState===4&&xhr.status===200){try{var result=JSON.parse(xhr.responseText);if(result.shorturl){shortUrl=result.shorturl;el('shortLinkDisplay').textContent=shortUrl;el('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='+encodeURIComponent(shortUrl)}}catch(e){}}};try{xhr.send()}catch(e){}}function copyLink(){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(shortUrl).then(function(){alert('Enlace copiado.')},function(){prompt('Copia el enlace:',shortUrl)})}else prompt('Copia el enlace:',shortUrl)}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
-</script></body></html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniStream Player - Smart TV & Mobile</title>
+
+    <!-- Shaka Player (Google - DASH / DRM Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.5/shaka-player.compiled.js"></script>
+    <!-- HLS.js (HLS Backup Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.0/hls.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #131b2e;
+            --bg-card: #1c2942;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+            --focus-glow: 0 0 15px rgba(59, 130, 246, 0.8);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-primary); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; }
+
+        header { background: var(--bg-secondary); padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .logo-box { display: flex; align-items: center; gap: 12px; }
+        .logo-box svg { fill: var(--accent); width: 32px; height: 32px; }
+        .logo-title { font-size: 1.3rem; font-weight: 700; }
+        .logo-tag { font-size: 0.75rem; background: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; }
+
+        .btn { background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:hover, .btn:focus { background: var(--accent-hover); outline: 3px solid #ffffff; box-shadow: var(--focus-glow); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-main); }
+        .btn-secondary:hover { background: #263859; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        main { display: grid; grid-template-columns: 1fr; gap: 20px; padding: 20px; max-width: 1600px; margin: 0 auto; width: 100%; }
+        @media(min-width: 1024px) { main { grid-template-columns: 360px 1fr; } }
+
+        .sidebar { display: flex; flex-direction: column; gap: 15px; }
+        .card { background: var(--bg-secondary); border-radius: 12px; padding: 18px; border: 1px solid rgba(255,255,255,0.05); }
+        .card-title { font-size: 1rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+
+        .player-container { background: black; border-radius: 12px; overflow: hidden; position: relative; width: 100%; aspect-ratio: 16/9; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .input-group label { font-size: 0.85rem; color: var(--text-sub); }
+        input, select { background: var(--bg-primary); border: 1px solid rgba(255,255,255,0.1); color: var(--text-main); padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; }
+        input:focus, select:focus { outline: 2px solid var(--accent); box-shadow: var(--focus-glow); }
+
+        .saved-playlists-list { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; margin-top: 10px; }
+        .playlist-item { display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; border: 1px solid transparent; }
+        .playlist-item.active { border-color: var(--accent); background: #233352; }
+        .playlist-item-name { font-weight: 600; cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .playlist-actions { display: flex; gap: 6px; }
+        .btn-xs { padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; }
+
+        .channel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; max-height: 520px; overflow-y: auto; padding-right: 5px; }
+        .channel-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--bg-card); border-radius: 10px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; position: relative; }
+        .channel-card:hover, .channel-card:focus { border-color: var(--accent); background: #233352; outline: none; box-shadow: var(--focus-glow); transform: scale(1.01); }
+        .channel-card.active { border-color: var(--success); background: #162e4a; }
+        
+        .ch-logo { width: 48px; height: 48px; border-radius: 8px; background: var(--bg-primary); object-fit: contain; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .ch-details { flex: 1; overflow: hidden; }
+        .ch-name { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ch-epg-now { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .epg-bar { background: rgba(19, 27, 46, 0.95); border-radius: 10px; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 4px; }
+        .epg-title { font-size: 0.85rem; color: var(--text-sub); display: flex; justify-content: space-between; }
+        .epg-program { font-size: 1rem; font-weight: 700; color: var(--text-main); }
+        .epg-next-program { font-size: 0.8rem; color: var(--accent); }
+
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: var(--bg-secondary); padding: 25px; border-radius: 12px; max-width: 450px; width: 90%; display: flex; flex-direction: column; gap: 15px; text-align: center; }
+        #qrBox { display: flex; justify-content: center; align-items: center; margin: 10px 0; background: white; padding: 12px; border-radius: 8px; min-height: 200px; }
+        #qrImg { max-width: 100%; height: auto; }
+        .short-link-box { background: var(--bg-primary); padding: 12px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; color: var(--success); letter-spacing: 1px; border: 1px solid var(--success); word-break: break-all; }
+        .auth-overlay {position:fixed;inset:0;background:#0a0e17;z-index:3000;display:flex;align-items:center;justify-content:center;padding:20px}
+        .auth-box {width:100%;max-width:430px;background:var(--bg-secondary);padding:25px;border-radius:14px;text-align:center}
+        .auth-box input {width:100%;margin:15px 0}
+        .auth-error {color:#f87171;min-height:24px;font-size:.9rem}
+        .fav-btn {background:transparent;border:0;color:#64748b;font-size:25px;cursor:pointer;padding:8px}
+        .fav-btn.on {color:#fbbf24}
+        .epg-note {color:var(--text-sub);font-size:.78rem;margin-top:4px}
+        button:focus, .channel-card:focus {outline:3px solid white}
+    </style>
+</head>
+<body>
+    <div id="webAuth" class="auth-overlay"><div class="auth-box">
+      <h2>🔐 Acceso a OmniStream</h2><p>Introduce la contraseña general</p>
+      <input id="webPass" type="password" autocomplete="off" placeholder="Contraseña" />
+      <button class="btn btn-success" id="webEnter" style="width:100%">Entrar al reproductor</button>
+      <p id="webError" class="auth-error" role="alert"></p>
+    </div></div>
+    <div id="pinOverlay" class="auth-overlay" style="display:none"><div class="auth-box">
+      <h2>🔒 TV bloqueada</h2><p>Introduce el PIN local</p>
+      <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN" maxlength="12" />
+      <button class="btn btn-success" id="pinEnter" style="width:100%">Desbloquear</button>
+      <p id="pinError" class="auth-error" role="alert"></p>
+    </div></div>
+
+    <header>
+        <div class="logo-box">
+            <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+            <div class="logo-title">OmniStream</div>
+            <span class="logo-tag">REV 1.1.2</span>
+        </div>
+        <div>
+            <button class="btn btn-secondary" id="btnLock">🔒 Bloquear TV</button>
+            <button class="btn btn-secondary" id="btnChangePin">🔑 Cambiar PIN</button>
+            <button class="btn btn-secondary" id="btnSyncModal">📱 Compartir Todas las Listas</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="sidebar">
+            <!-- GESTOR DE VARIAS LISTAS -->
+            <div class="card">
+                <div class="card-title">Mis Listas Guardadas</div>
+                
+                <div class="input-group">
+                    <label>Seleccionar Lista Activa</label>
+                    <select id="playlistSelect">
+                        <option value="">-- Seleccionar Lista --</option>
+                    </select>
+                </div>
+
+                <div class="saved-playlists-list" id="playlistsContainer"></div>
+            </div>
+
+            <!-- AÑADIR NUEVA LISTA -->
+            <div class="card">
+                <div class="card-title">Añadir Nueva Lista</div>
+                <div class="input-group">
+                    <label>Nombre de la lista</label>
+                    <input type="text" id="listNameInput" placeholder="Ej: Deportes / Películas" />
+                </div>
+                <div class="input-group">
+                    <label>Enlace M3U / M3U8 / MPD</label>
+                    <input type="text" id="m3uUrlInput" placeholder="https://..." />
+                </div>
+                <button class="btn btn-success" style="width: 100%;" id="btnAddList">💾 Guardar y Cargar Lista</button>
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" id="btnGenerateQr">📲 Exportar Todo a la TV</button>
+
+                <div style="margin: 10px 0; text-align: center; color: var(--text-sub); font-size: 0.8rem;">O bien</div>
+                <input type="file" id="fileInput" accept=".m3u,.m3u8,.txt" style="display: none;" />
+                <button class="btn btn-secondary" style="width: 100%;" onclick="document.getElementById('fileInput').click()">📁 Subir archivo local .M3U</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Stream Manual MPD/DRM</div>
+                <div class="input-group">
+                    <label>URL manifiesto (.mpd)</label>
+                    <input type="text" id="manualMpdUrl" placeholder="https://domain.com/manifest.mpd" />
+                </div>
+                <div class="input-group">
+                    <label>ClearKey (KID:KEY)</label>
+                    <input type="text" id="manualClearkey" placeholder="123456...:abcdef..." />
+                </div>
+                <button class="btn btn-secondary" style="width: 100%;" id="btnPlayManual">▶ Reproducir MPD Directo</button>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div class="player-container">
+                <video id="videoPlayer" controls playsinline autoplay></video>
+            </div>
+
+            <!-- EPG - GUÍA EN VIVO -->
+            <div class="epg-bar" id="epgBar">
+                <div class="epg-title">
+                    <span>🔴 EN DIRECTO</span>
+                    <span id="epgTime">--:--</span>
+                </div>
+                <div class="epg-program" id="epgCurrent">Selecciona un canal para ver la guía</div>
+                <div class="epg-next-program" id="epgNext">A continuación: --</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">
+                    <span>Guía de Canales (<span id="chCount">0</span>)</span>
+                    <select id="groupFilter"><option value="">Todas las Categorías</option></select>
+                </div>
+                <div class="input-group">
+                    <label>URL guía XMLTV (opcional, compatible con CORS)</label>
+                    <input type="text" id="epgUrl" placeholder="https://servidor/guia.xml" />
+                    <button class="btn btn-secondary" id="btnLoadEpg">📅 Cargar EPG</button>
+                    <div class="epg-note" id="epgStatus">Sin guía XMLTV cargada</div>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="searchBox" placeholder="🔍 Buscar canal..." />
+                </div>
+                <div class="channel-grid" id="channelList"></div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="syncModal">
+        <div class="modal">
+            <div class="card-title">Enlace Corto para Smart TV</div>
+            <p style="font-size: 0.85rem; color: var(--text-sub);">Escribe este enlace en tu TV para exportar **todas tus listas** juntas:</p>
+            
+            <div class="short-link-box" id="shortLinkDisplay">Generando enlace...</div>
+
+            <div id="qrBox">
+                <img id="qrImg" src="" alt="Cargando código QR..." />
+            </div>
+            
+            <button class="btn btn-secondary" id="btnCopyLink">📋 Copiar Enlace</button>
+            <button class="btn" onclick="document.getElementById('syncModal').style.display='none'">Cerrar</button>
+        </div>
+    </div>
+
+    <script>
+        const WEB_PASS_HASH = '8fe3cc7a3bb90a65a17bbed18e0a5af3338d41a6914c902512aabed06a6b7dec';
+        const DEFAULT_PIN_HASH = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92';
+        let favoriteNames = safeJSON('omni_favorites', []);
+        let epgPrograms = {};
+        let epgLoaded = false;
+        let currentChannel = null;
+        function safeGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+        function safeSet(k,v) { try { localStorage.setItem(k,v); } catch(e) {} }
+        function safeJSON(k, fallback) { try { var v=JSON.parse(safeGet(k)); return Array.isArray(v)?v:fallback; }catch(e){return fallback;} }
+        // SHA-256 con SubtleCrypto (HTTPS) o implementación JavaScript local para TV antiguas.
+        function sha256Fallback(ascii) {
+          var mathPow=Math.pow,maxWord=mathPow(2,32),lengthProperty='length',i,j,result='',words=[],asciiBitLength=ascii[lengthProperty]*8;
+          var hash=sha256Fallback.h=sha256Fallback.h||[],k=sha256Fallback.k=sha256Fallback.k||[],primeCounter=k[lengthProperty],isComposite={};
+          for(var candidate=2;primeCounter<64;candidate++){if(!isComposite[candidate]){for(i=0;i<313;i+=candidate)isComposite[i]=candidate;hash[primeCounter]=(mathPow(candidate,.5)*maxWord)|0;k[primeCounter++]=(mathPow(candidate,1/3)*maxWord)|0;}}
+          ascii+='\x80';while(ascii[lengthProperty]%64-56)ascii+='\x00';
+          for(i=0;i<ascii[lengthProperty];i++){j=ascii.charCodeAt(i);if(j>>8)return '';words[i>>2]|=j<<((3-i)%4)*8;}
+          words[words[lengthProperty]]=(asciiBitLength/maxWord)|0;words[words[lengthProperty]]=asciiBitLength;
+          var oldHash=hash.slice(0);
+          for(j=0;j<words[lengthProperty];){var w=words.slice(j,j+=16),working=hash.slice(0);
+            for(i=0;i<64;i++){var w15=w[i-15],w2=w[i-2],a=working[0],e=working[4];
+              var s1=((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7));
+              var s0=((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10));
+              var ch=(e&working[5])^((~e)&working[6]);
+              var maj=(a&working[1])^(a&working[2])^(working[1]&working[2]);
+              var gamma0=((w15>>>7)|(w15<<25))^((w15>>>18)|(w15<<14))^(w15>>>3);
+              var gamma1=((w2>>>17)|(w2<<15))^((w2>>>19)|(w2<<13))^(w2>>>10);
+              if(i>=16)w[i]=(w[i-16]+gamma0+w[i-7]+gamma1)|0;
+              var t1=(working[7]+s1+ch+k[i]+w[i])|0,t2=(s0+maj)|0;
+              working=[(t1+t2)|0,working[0],working[1],working[2],(working[3]+t1)|0,working[4],working[5],working[6]];
+            }
+            for(i=0;i<8;i++)hash[i]=(hash[i]+working[i])|0;
+          }
+          for(i=0;i<8;i++)for(j=3;j>=0;j--){var b=(hash[i]>>j*8)&255;result+=((b<16)?'0':'')+b.toString(16);}
+          sha256Fallback.h=oldHash;
+          return result;
+        }
+        function hashPassword(s) {return sha256Fallback(String(s).trim().toLowerCase());}
+        function authenticate() {
+          if(hashPassword(document.getElementById('webPass').value)===WEB_PASS_HASH){
+            document.getElementById('webAuth').style.display='none';document.getElementById('webError').textContent='';
+            try {sessionStorage.setItem('omni_auth_112','ok');}catch(e){}
+          } else {document.getElementById('webError').textContent='Contraseña incorrecta';}
+        }
+        function lockTV(){document.getElementById('pinOverlay').style.display='flex';document.getElementById('pinInput').value='';}
+        function unlockTV(){var saved=safeGet('omni_pin_hash')||DEFAULT_PIN_HASH;
+          if(hashPassword(document.getElementById('pinInput').value)===saved){document.getElementById('pinOverlay').style.display='none';document.getElementById('pinError').textContent='';}
+          else document.getElementById('pinError').textContent='PIN incorrecto';}
+        function changePin(){var old=prompt('PIN actual:');if(old===null)return;
+          if(hashPassword(old)!==(safeGet('omni_pin_hash')||DEFAULT_PIN_HASH)){alert('PIN actual incorrecto');return;}
+          var next=prompt('Nuevo PIN (4 a 12 números):');if(next===null)return;
+          if(!/^\d{4,12}$/.test(next)){alert('El PIN debe tener entre 4 y 12 números');return;}
+          safeSet('omni_pin_hash',hashPassword(next));alert('PIN actualizado');}
+        function toggleFavorite(name){var i=favoriteNames.indexOf(name);if(i>=0)favoriteNames.splice(i,1);else favoriteNames.push(name);safeSet('omni_favorites',JSON.stringify(favoriteNames));filterChannels();}
+        function xmlDate(s){if(!s)return null;var m=s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?\s*([+-]\d{4})?/);if(!m)return null;
+          var iso=m[1]+'-'+m[2]+'-'+m[3]+'T'+m[4]+':'+m[5]+':'+(m[6]||'00');
+          if(m[7])iso+=m[7].slice(0,3)+':'+m[7].slice(3);else iso+='Z';return new Date(iso).getTime();}
+        function firstText(node,tag){var els=node.getElementsByTagName(tag);return els.length?(els[0].textContent||'').trim():'';}
+        function loadEpg(){var url=document.getElementById('epgUrl').value.trim();if(!/^https?:\/\//i.test(url)){alert('Introduce una URL HTTP(S) XMLTV');return;}
+          document.getElementById('epgStatus').textContent='Cargando EPG...';
+          fetch(url).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.text();}).then(function(body){
+            var doc=new DOMParser().parseFromString(body,'application/xml');if(doc.getElementsByTagName('parsererror').length)throw Error('XML no válido');
+            var progs=doc.getElementsByTagName('programme'),result={};for(var i=0;i<progs.length;i++){
+              var n=progs[i],id=n.getAttribute('channel'),start=xmlDate(n.getAttribute('start')),stop=xmlDate(n.getAttribute('stop'));
+              if(!id||!start||!stop)continue;(result[id]||(result[id]=[])).push({start:start,stop:stop,title:firstText(n,'title')||'Sin título'});
+            }
+            epgPrograms=result;epgLoaded=true;document.getElementById('epgStatus').textContent='EPG cargado: '+progs.length+' programas';filterChannels();updateSelectedEpg();
+            safeSet('omni_epg_url',url);
+          }).catch(function(e){document.getElementById('epgStatus').textContent='Error EPG: '+e.message+' (revisa CORS y XMLTV)';});
+        }
+        function epgFor(ch){var arr=epgPrograms[ch.tvgId]||epgPrograms[ch.name]||[],now=Date.now(),current=null,next=null;
+          for(var i=0;i<arr.length;i++){var p=arr[i];if(p.start<=now&&p.stop>now)current=p;else if(p.start>now&&(!next||p.start<next.start))next=p;}
+          return {current:current,next:next};}
+        function updateSelectedEpg(){if(!currentChannel)return;var info=epgFor(currentChannel);
+          document.getElementById('epgCurrent').textContent=currentChannel.name+' — '+(info.current?info.current.title:'Programación no disponible');
+          document.getElementById('epgNext').textContent='A continuación: '+(info.next?info.next.title:'Sin información');}
+        let channels = [];
+        let shakaPlayer = null;
+        let hlsPlayer = null;
+        let currentShortUrl = "";
+        let playlists = safeJSON('omni_playlists', []);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof shaka !== 'undefined') { try { shaka.polyfill.installAll(); } catch(e) {} }
+            if (typeof shaka !== 'undefined' && shaka.Player.isBrowserSupported()) {
+                const video = document.getElementById('videoPlayer');
+                shakaPlayer = new shaka.Player(video);
+                shakaPlayer.configure({
+                    streaming: { rebufferingGoal: 2, bufferingGoal: 5, bufferBehind: 10, inaccuracyTolerance: 0.5 },
+                    manifest: { dash: { ignoreMinBufferTime: true } }
+                });
+            }
+
+            document.getElementById('webEnter').onclick=authenticate;
+            document.getElementById('webPass').onkeydown=function(e){if(e.key==='Enter')authenticate();};
+            document.getElementById('pinEnter').onclick=unlockTV;
+            document.getElementById('pinInput').onkeydown=function(e){if(e.key==='Enter')unlockTV();};
+            document.getElementById('btnLock').onclick=lockTV;
+            document.getElementById('btnChangePin').onclick=changePin;
+            document.getElementById('btnLoadEpg').onclick=loadEpg;
+            var savedEpg=safeGet('omni_epg_url');if(savedEpg)document.getElementById('epgUrl').value=savedEpg;
+            try{if(sessionStorage.getItem('omni_auth_112')==='ok')document.getElementById('webAuth').style.display='none';}catch(e){}
+            document.getElementById('btnAddList').addEventListener('click', saveAndLoadPlaylist);
+            document.getElementById('playlistSelect').addEventListener('change', (e) => {
+                if(e.target.value) loadM3UFromUrl(e.target.value, true);
+            });
+
+            document.getElementById('btnGenerateQr').addEventListener('click', generateTvLink);
+
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => parseM3U(evt.target.result);
+                    reader.readAsText(file);
+                }
+            });
+
+            document.getElementById('btnPlayManual').addEventListener('click', () => {
+                const url = document.getElementById('manualMpdUrl').value.trim();
+                const key = document.getElementById('manualClearkey').value.trim();
+                if(url) playStream(url, key);
+            });
+
+            document.getElementById('btnSyncModal').addEventListener('click', () => generateTvLink());
+            document.getElementById('btnCopyLink').addEventListener('click', copyLinkToClipboard);
+            document.getElementById('searchBox').addEventListener('input', filterChannels);
+            document.getElementById('groupFilter').addEventListener('change', filterChannels);
+
+            setInterval(updateEpgClock, 1000);
+            setInterval(updateSelectedEpg, 60000);
+            checkAutoLoad();
+            renderPlaylistManager();
+        });
+
+        function saveAndLoadPlaylist() {
+            const name = document.getElementById('listNameInput').value.trim() || 'Lista ' + (playlists.length + 1);
+            const url = document.getElementById('m3uUrlInput').value.trim();
+
+            if(!url) return alert('Introduce un enlace M3U válido.');
+
+            const existingIndex = playlists.findIndex(p => p.url === url);
+            if(existingIndex >= 0) {
+                playlists[existingIndex].name = name;
+            } else {
+                playlists.push({ name, url });
+            }
+
+            localStorage.setItem('omni_playlists', JSON.stringify(playlists));
+            renderPlaylistManager();
+            loadM3UFromUrl(url, true);
+            document.getElementById('listNameInput').value = '';
+        }
+
+        function renderPlaylistManager() {
+            const select = document.getElementById('playlistSelect');
+            const container = document.getElementById('playlistsContainer');
+            select.innerHTML = '<option value="">-- Seleccionar Lista --</option>';
+            container.innerHTML = '';
+
+            playlists.forEach((p, index) => {
+                const opt = document.createElement('option');
+                opt.value = p.url;
+                opt.innerText = p.name;
+                select.appendChild(opt);
+
+                const item = document.createElement('div');
+                item.className = 'playlist-item';
+                item.innerHTML = `
+                    <span class="playlist-item-name" onclick="loadM3UFromUrl('${p.url}', true)">📺 ${p.name}</span>
+                    <div class="playlist-actions">
+                        <button class="btn btn-danger btn-xs" onclick="deletePlaylist(${index})">🗑</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function deletePlaylist(index) {
+            playlists.splice(index, 1);
+            localStorage.setItem('omni_playlists', JSON.stringify(playlists));
+            renderPlaylistManager();
+        }
+
+        function checkAutoLoad() {
+            const params = new URLSearchParams(window.location.search);
+            
+            // SI VIENEN MÚLTIPLES LISTAS EN LA URL
+            if (params.has('playlists')) {
+                try {
+                    const importedPlaylists = JSON.parse(decodeURIComponent(params.get('playlists')));
+                    if (Array.isArray(importedPlaylists)) {
+                        importedPlaylists.forEach(imp => {
+                            if (!playlists.some(p => p.url === imp.url)) {
+                                playlists.push(imp);
+                            }
+                        });
+                        localStorage.setItem('omni_playlists', JSON.stringify(playlists));
+                    }
+                } catch(e) {}
+            }
+
+            // SI VIENE UNA LISTA ÚNICA
+            if (params.has('list')) {
+                const url = decodeURIComponent(params.get('list'));
+                document.getElementById('m3uUrlInput').value = url;
+                loadM3UFromUrl(url, true);
+            } else if(playlists.length > 0) {
+                loadM3UFromUrl(playlists[0].url, false);
+                document.getElementById('playlistSelect').value = playlists[0].url;
+            }
+        }
+
+        async function loadM3UFromUrl(url, autoPlay = false) {
+            let fetchUrl = url;
+            if(url.includes('dropbox.com')) fetchUrl = url.replace('dl=0', 'dl=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+
+            try {
+                const res = await fetch(fetchUrl);
+                const text = await res.text();
+                parseM3U(text, autoPlay);
+            } catch(err) {
+                try {
+                    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(fetchUrl);
+                    const res = await fetch(proxyUrl);
+                    const text = await res.text();
+                    parseM3U(text, autoPlay);
+                } catch(e) {
+                    alert('Error al obtener la lista. Verifica el enlace.');
+                }
+            }
+        }
+
+        function parseM3U(content, autoPlay = false) {
+            const lines = content.split('\n');
+            channels = [];
+            let current = {};
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.split(',')[1] || 'Canal sin nombre';
+                    current = { name: nameMatch, group: 'General', logo: '', key: null, tvgId:'', epgNow: 'Programación no disponible', epgNext: 'Sin información' };
+                    
+                    const groupMatch = line.match(/group-title="([^"]+)"/);
+                    if(groupMatch) current.group = groupMatch[1];
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    if(logoMatch) current.logo = logoMatch[1];
+                    const idMatch = line.match(/tvg-id="([^"]+)"/);
+                    if(idMatch)current.tvgId=idMatch[1];
+                    const epgNowMatch = line.match(/tvg-now="([^"]+)"/);
+                    if(epgNowMatch) current.epgNow = epgNowMatch[1];
+                } else if (line.startsWith('#KODIPROP:inputstream.adaptive.license_key=')) {
+                    current.key = line.split('=')[1].trim();
+                } else if (line && !line.startsWith('#')) {
+                    current.url = line;
+                    channels.push(current);
+                    current = {};
+                }
+            });
+
+            updateGroups();
+            renderChannels(channels);
+
+            if (autoPlay && channels.length > 0) {
+                playStream(channels[0].url, channels[0].key, channels[0]);
+            }
+        }
+
+        function renderChannels(list) {
+            const container = document.getElementById('channelList');
+            container.innerHTML = '';
+            document.getElementById('chCount').innerText = list.length;
+
+            list.forEach(ch => {
+                const item = document.createElement('div');
+                item.className = 'channel-card';
+                item.tabIndex = 0;
+                item.innerHTML = `
+                    <div class="ch-logo">${ch.logo ? `<img src="${ch.logo}" style="width:100%;height:100%;object-fit:contain;"/>` : '📺'}</div>
+                    <div class="ch-details">
+                        <div class="ch-name">${ch.name}</div>
+                        <div class="ch-epg-now">▶ ${epgFor(ch).current ? epgFor(ch).current.title : 'Programación no disponible'}</div>
+                        <div class="ch-group" style="font-size:0.7rem; color:var(--text-sub);">${ch.group}</div>
+                    </div>
+                    <button class="fav-btn ${favoriteNames.indexOf(ch.name)>=0?'on':''}" title="Favorito">★</button>
+                `;
+                item.querySelector('.fav-btn').addEventListener('click', function(e){e.stopPropagation();toggleFavorite(ch.name);});
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.channel-card').forEach(c => c.classList.remove('active'));
+                    item.classList.add('active');
+                    playStream(ch.url, ch.key, ch);
+                });
+                container.appendChild(item);
+            });
+        }
+
+        async function playStream(url, clearkey = null, channelData = null) {
+            const video = document.getElementById('videoPlayer');
+            if (hlsPlayer) { hlsPlayer.destroy(); hlsPlayer = null; }
+
+            if(channelData) { currentChannel=channelData; updateSelectedEpg(); }
+
+            if (url.includes('.mpd')) {
+                if (!shakaPlayer) return alert('DASH no es compatible.');
+                try {
+                    await shakaPlayer.unload();
+
+                    if (clearkey) {
+                        let keys = {};
+                        if(clearkey.includes(':')) {
+                            const [kid, key] = clearkey.split(':');
+                            keys[kid.toLowerCase()] = key.toLowerCase();
+                        }
+                        shakaPlayer.configure({ drm: { clearKeys: keys } });
+                    }
+
+                    await shakaPlayer.load(url);
+                    video.muted = false;
+                    const p = video.play();
+                    if (p) p.catch(() => { video.muted = true; video.play(); });
+                } catch(e) {
+                    alert('Error al reproducir Stream DRM/MPD.');
+                }
+            } else if (url.includes('.m3u8') && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                if (shakaPlayer) await shakaPlayer.unload();
+                hlsPlayer = new Hls();
+                hlsPlayer.loadSource(url);
+                hlsPlayer.attachMedia(video);
+                hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            } else {
+                if (shakaPlayer) await shakaPlayer.unload();
+                video.src = url;
+                video.play();
+            }
+        }
+
+        async function generateTvLink() {
+            if (playlists.length === 0) {
+                const inputUrl = document.getElementById('m3uUrlInput').value.trim();
+                if(!inputUrl) return alert('Guarda o introduce al menos una lista M3U primero.');
+                playlists.push({ name: 'Lista Principal', url: inputUrl });
+            }
+
+            // Exportación completa del objeto de listas
+            const longUrl = window.location.origin + window.location.pathname + '?playlists=' + encodeURIComponent(JSON.stringify(playlists));
+            
+            document.getElementById('shortLinkDisplay').innerText = 'Generando enlace corto...';
+            document.getElementById('syncModal').style.display = 'flex';
+
+            try {
+                const res = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(longUrl)}`);
+                const data = await res.json();
+                
+                if (data.shorturl) {
+                    currentShortUrl = data.shorturl;
+                } else {
+                    currentShortUrl = longUrl;
+                }
+            } catch(e) {
+                currentShortUrl = longUrl;
+            }
+
+            document.getElementById('shortLinkDisplay').innerText = currentShortUrl;
+            
+            const qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(currentShortUrl);
+            document.getElementById('qrImg').src = qrApiUrl;
+        }
+
+        function copyLinkToClipboard() {
+            if (currentShortUrl) {
+                navigator.clipboard.writeText(currentShortUrl).then(() => {
+                    alert('📋 Enlace copiado.');
+                }).catch(() => {
+                    alert('Enlace: ' + currentShortUrl);
+                });
+            }
+        }
+
+        function updateEpgClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('epgTime').innerText = `${hours}:${minutes}`;
+        }
+
+        function updateGroups() {
+            const groups = [...new Set(channels.map(c => c.group))];
+            const select = document.getElementById('groupFilter');
+            select.innerHTML = '<option value="">Todas las Categorías</option><option value="__favorites__">⭐ Favoritos</option>';
+            groups.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g; opt.innerText = g;
+                select.appendChild(opt);
+            });
+        }
+
+        function filterChannels() {
+            const query = document.getElementById('searchBox').value.toLowerCase();
+            const group = document.getElementById('groupFilter').value;
+            const filtered = channels.filter(c => 
+                (c.name.toLowerCase().includes(query)) &&
+                (!group || (group==='__favorites__' ? favoriteNames.indexOf(c.name)>=0 : c.group === group))
+            );
+            renderChannels(filtered);
+        }
+    </script>
+</body>
+</html>
