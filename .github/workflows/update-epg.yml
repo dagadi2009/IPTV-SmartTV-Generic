@@ -1,23 +1,68 @@
+
 name: Actualizar EPG OmniStream
+
 on:
   workflow_dispatch:
   schedule:
     - cron: '17 4,16 * * *'
+
 permissions:
   contents: write
+
+concurrency:
+  group: omnistream-epg-main
+  cancel-in-progress: false
+
 jobs:
   epg:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
       - name: Combinar EPG España Reino Unido Canadá
         run: python3 scripts/merge_epg.py
-      - name: Publicar guía
+
+      - name: Publicar guía EPG
+        shell: bash
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add epg/guide.xml
-          if ! git diff --cached --quiet; then
-            git commit -m 'Actualizar EPG multirregional OmniStream'
-            git push
+
+          if git diff --cached --quiet; then
+            echo "EPG sin cambios. No es necesario publicar."
+            exit 0
           fi
+
+          git commit -m "Actualizar EPG multirregional OmniStream"
+
+          for intento in 1 2 3 4 5; do
+            echo "Intento de publicación: $intento de 5"
+
+            git fetch origin main
+
+            if ! git rebase origin/main; then
+              echo "Conflicto al sincronizar la rama main."
+              git rebase --abort || true
+              exit 1
+            fi
+
+            if git push origin HEAD:main; then
+              echo "EPG publicado correctamente."
+              exit 0
+            fi
+
+            echo "La rama main ha cambiado. Reintentando..."
+            sleep 5
+          done
+
+          echo "ERROR: No se pudo publicar el EPG tras 5 intentos."
+          exit 1
