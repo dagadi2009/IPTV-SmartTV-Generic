@@ -10,58 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-      - name: Descargar y validar XMLTV
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p epg
-          curl --fail --location --retry 3 --connect-timeout 20 --max-time 180 \
-            -A 'OmniStreamEPG/1.1.5' \
-            'https://raw.githubusercontent.com/raulfdeztdo/epg/main/guide.xml' \
-            -o epg/guide.xml.tmp
-          python3 - <<'PYTHON'
-          import xml.etree.ElementTree as ET
-          from datetime import datetime, timezone, timedelta
-          from pathlib import Path
-          path = Path('epg/guide.xml.tmp')
-          if path.stat().st_size < 1000:
-              raise SystemExit('EPG demasiado pequeño')
-          channels = 0
-          current = 0
-          now = datetime.now(timezone.utc)
-          for _, element in ET.iterparse(str(path), events=('end',)):
-              if element.tag == 'channel':
-                  channels += 1
-              elif element.tag == 'programme':
-                  raw = element.attrib.get('stop', '')
-                  try:
-                      dt = datetime.strptime(raw[:14], '%Y%m%d%H%M%S')
-                      tz = raw[15:20]
-                      if len(tz) == 5 and tz[0] in '+-':
-                          sign = 1 if tz[0] == '+' else -1
-                          offset = timedelta(hours=int(tz[1:3]), minutes=int(tz[3:5])) * sign
-                          dt = dt.replace(tzinfo=timezone(offset)).astimezone(timezone.utc)
-                      else:
-                          dt = dt.replace(tzinfo=timezone.utc)
-                      if dt > now:
-                          current += 1
-                  except ValueError:
-                      pass
-              element.clear()
-          print(f'Canales: {channels}; programas con fin futuro: {current}')
-          if channels < 5 or current < 10:
-              raise SystemExit('EPG vacío o caducado; se conserva la guía anterior')
-          path.replace('epg/guide.xml')
-          PYTHON
-      - name: Publicar actualización
-        shell: bash
+      - name: Combinar EPG España Reino Unido Canadá
+        run: python3 scripts/merge_epg.py
+      - name: Publicar guía
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add epg/guide.xml
           if ! git diff --cached --quiet; then
-            git commit -m 'Actualizar guía XMLTV OmniStream'
+            git commit -m 'Actualizar EPG multirregional OmniStream'
             git push
           fi
